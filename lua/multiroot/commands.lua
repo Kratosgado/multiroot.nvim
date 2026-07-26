@@ -116,6 +116,47 @@ function M.setup()
     desc = "Run a named terminal from the workspace file",
   })
 
+  vim.api.nvim_create_user_command("WorkspaceTask", function(args)
+    mr.task(args.args)
+  end, {
+    nargs = "?",
+    complete = function()
+      if not state.is_active() then
+        return {}
+      end
+      local names = {}
+      for _, t in ipairs(state.current.tasks or {}) do
+        table.insert(names, t.name)
+      end
+      return names
+    end,
+    desc = "Run a workspace task (picker if no arg)",
+  })
+
+  vim.api.nvim_create_user_command("WorkspaceTaskList", function()
+    if not state.is_active() then
+      util.notify("no workspace open")
+      return
+    end
+    local tasks = state.current.tasks or {}
+    if #tasks == 0 then
+      util.notify("no tasks defined")
+      return
+    end
+    local lines = { "Tasks:" }
+    for _, t in ipairs(tasks) do
+      local parts = { "  " .. t.name }
+      if t.folder then
+        table.insert(parts, " [" .. t.folder .. "]")
+      end
+      table.insert(parts, " → " .. t.cmd)
+      table.insert(lines, table.concat(parts))
+    end
+    vim.api.nvim_echo(vim.tbl_map(function(l)
+      return { l .. "\n" }
+    end, lines), false, {})
+  end, { desc = "List workspace tasks" })
+
   vim.api.nvim_create_user_command("WorkspaceTermList", function()
     if not state.is_active() then
       util.notify("no workspace open")

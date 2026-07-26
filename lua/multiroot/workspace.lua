@@ -42,12 +42,34 @@ function M.read(path)
       })
     end
   end
+  local tasks = {}
+  for _, t in ipairs(decoded.tasks or {}) do
+    if type(t) == "table" and type(t.name) == "string" and type(t.cmd) == "string" then
+      table.insert(tasks, {
+        name = t.name,
+        cmd = t.cmd,
+        folder = type(t.folder) == "string" and t.folder or nil,
+        position = type(t.position) == "string" and t.position or nil,
+        interactive = t.interactive == true,
+      })
+    end
+  end
+  local env = {}
+  if type(decoded.env) == "table" then
+    for k, v in pairs(decoded.env) do
+      if type(k) == "string" and (type(v) == "string" or type(v) == "number" or type(v) == "boolean") then
+        env[k] = tostring(v)
+      end
+    end
+  end
   return {
     name = name,
     file = path,
     folders = folders,
     settings = decoded.settings or {},
     terminals = terminals,
+    tasks = tasks,
+    env = env,
   }
 end
 
@@ -62,6 +84,12 @@ function M.write(path, ws)
   end
   if ws.terminals and #ws.terminals > 0 then
     payload.terminals = ws.terminals
+  end
+  if ws.tasks and #ws.tasks > 0 then
+    payload.tasks = ws.tasks
+  end
+  if ws.env and next(ws.env) then
+    payload.env = ws.env
   end
   local encoded = util.encode_pretty(payload)
   if not encoded then

@@ -8,6 +8,10 @@ VSCode-style multi-root workspaces for Neovim. Group N folders under one workspa
 - Recent workspaces picker
 - Auto-load a workspace when `nvim` is launched inside a folder with a `.nvim-workspace.json`
 - Folder-scoped and named terminals declared in the workspace file
+- One-shot tasks (build, test, deploy...) picked from the workspace file
+- Per-workspace env vars (auto-applied, auto-restored on close)
+- Per-workspace LSP settings overrides
+- Statusline component
 - Clean handoff on close/switch: wipes workspace file buffers and terminals, keeps unrelated buffers
 
 > **Status:** v1. File tree with multiple roots is planned for v2 (requires a custom neo-tree source).
@@ -58,13 +62,35 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     { "name": "backend",  "folder": "acme-backend",  "cmd": "npm run dev", "autostart": true },
     { "name": "frontend", "folder": "acme-frontend", "cmd": "npm start" },
     { "name": "shell",    "folder": "acme-shared" }
-  ]
+  ],
+  "tasks": [
+    { "name": "build",  "folder": "acme-backend",  "cmd": "make" },
+    { "name": "test",   "folder": "acme-backend",  "cmd": "pytest -q" },
+    { "name": "deploy", "cmd": "./scripts/deploy.sh" }
+  ],
+  "env": {
+    "AWS_PROFILE": "acme-dev",
+    "DATABASE_URL": "postgres://localhost/acme"
+  },
+  "settings": {
+    "lsp": {
+      "lua_ls": {
+        "settings": { "Lua": { "diagnostics": { "globals": ["vim"] } } }
+      },
+      "pyright": {
+        "settings": { "python": { "pythonPath": "./venv/bin/python" } }
+      }
+    }
+  }
 }
 ```
 
-`folder` may be the folder's basename (matched against the workspace `folders` list) or an absolute path. Omit `cmd` to open a plain shell. Set `autostart: true` to launch the terminal automatically when the workspace opens.
+`folder` may be the folder's basename (matched against the workspace `folders` list) or an absolute path. Paths can be absolute or use `~`. When a workspace is opened, Neovim `cd`s into the first folder.
 
-Paths can be absolute or use `~`. When a workspace is opened, Neovim `cd`s into the first folder.
+- **terminals** — long-running processes; reopening a named terminal focuses the existing buffer. `autostart: true` launches on open. Omit `cmd` for a plain shell.
+- **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse.
+- **env** — set on open (previous values snapshotted), restored on close.
+- **settings.lsp** — per-server config patch merged into `vim.lsp.config`; attached clients are notified via `workspace/didChangeConfiguration`. Reverted on close. Requires Neovim 0.11+.
 
 ## Commands
 
@@ -82,6 +108,8 @@ Paths can be absolute or use `~`. When a workspace is opened, Neovim `cd`s into 
 | `:WorkspaceTerm [folder]` | Open a terminal in a workspace folder (picker if omitted) |
 | `:WorkspaceTermRun [name]` | Launch (or focus) a named terminal from the workspace file |
 | `:WorkspaceTermList` | List named terminals declared in the workspace |
+| `:WorkspaceTask [name]` | Run a task (picker if omitted) |
+| `:WorkspaceTaskList` | List workspace tasks |
 | `:WorkspaceSaveSession` | Force save the current session |
 | `:WorkspaceLoadSession` | Restore the active workspace's session |
 
@@ -132,7 +160,22 @@ mr.grep()             -- open grep picker
 mr.recent()           -- open recent-workspaces picker
 mr.terminal(folder?)  -- open terminal in folder (picker if nil)
 mr.terminal_run(name?)-- launch/focus a named terminal (picker if nil)
+mr.task(name?)        -- run a task (picker if nil)
+mr.statusline(opts?)  -- string for lualine/heirline/etc. opts: { icon = true, folder = true, bufnr = 0 }
 ```
+
+### Statusline
+
+```lua
+-- lualine
+sections = {
+  lualine_c = {
+    { function() return require("multiroot").statusline() end },
+  },
+}
+```
+
+Returns `" acme:backend"` when a workspace is open (folder segment reflects the current buffer's owning folder), empty string otherwise. Also exposed: `require("multiroot.statusline").name()` and `.folder(bufnr)` for finer control.
 
 ## Events
 
@@ -171,8 +214,8 @@ Not every language server honors multi-root — some indexes are still cwd-scope
 ## Roadmap
 
 - **v2:** neo-tree custom source showing all roots as siblings in one tree view
-- Per-workspace settings (LSP config overrides, indent, etc.) via `settings` in the workspace JSON
 - `:WorkspaceRename`, `:WorkspaceDelete`
+- File pinning per workspace (harpoon-style)
 
 ## License
 

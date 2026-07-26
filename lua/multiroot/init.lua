@@ -62,8 +62,10 @@ function M.open(path)
   if vim.fn.isdirectory(primary) == 1 then
     vim.api.nvim_set_current_dir(primary)
   end
+  require("multiroot.env").apply()
   if config.lsp.enabled then
     lsp.sync_all()
+    require("multiroot.lsp_settings").apply()
   end
   recent.add(ws)
   emit("MultirootLoaded", ws)
@@ -100,8 +102,10 @@ function M.close(opts)
     wiped, skipped = require("multiroot.buffers").wipe_folders(folders)
   end
   if config.lsp.enabled then
+    require("multiroot.lsp_settings").restore()
     lsp.remove_all(folders)
   end
+  require("multiroot.env").restore()
   state.clear()
   emit("MultirootClosed", ws)
   if not opts.silent then
@@ -216,6 +220,18 @@ function M.terminal_run(name)
   else
     require("multiroot.terminal").pick_named()
   end
+end
+
+function M.task(name)
+  if name and name ~= "" then
+    require("multiroot.task").run_named(name)
+  else
+    require("multiroot.task").pick()
+  end
+end
+
+function M.statusline(opts)
+  return require("multiroot.statusline").get(opts)
 end
 
 return M
