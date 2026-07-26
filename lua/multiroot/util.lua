@@ -3,7 +3,8 @@ local M = {}
 M.uv = vim.uv or vim.loop
 
 function M.expand(path)
-  return vim.fn.fnamemodify(vim.fn.expand(path), ":p"):gsub("/$", "")
+  local abs = vim.fn.fnamemodify(vim.fn.expand(path), ":p")
+  return (abs:gsub("/$", ""))
 end
 
 function M.read_file(path)

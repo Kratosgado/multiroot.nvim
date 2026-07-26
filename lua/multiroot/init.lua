@@ -14,17 +14,22 @@ function M.setup(opts)
 
   local cfg = config.get()
   if cfg.auto_load then
-    vim.api.nvim_create_autocmd("VimEnter", {
-      group = vim.api.nvim_create_augroup("MultirootAutoLoad", { clear = true }),
-      once = true,
-      callback = function()
-        local workspace = require("multiroot.workspace")
-        local file = workspace.find_in_cwd(cfg.workspace_file)
-        if file then
-          M.open(file)
-        end
-      end,
-    })
+    local function try_auto_load()
+      local workspace = require("multiroot.workspace")
+      local file = workspace.find_in_cwd(cfg.workspace_file)
+      if file then
+        M.open(file)
+      end
+    end
+    if vim.v.vim_did_enter == 1 then
+      try_auto_load()
+    else
+      vim.api.nvim_create_autocmd("VimEnter", {
+        group = vim.api.nvim_create_augroup("MultirootAutoLoad", { clear = true }),
+        once = true,
+        callback = try_auto_load,
+      })
+    end
   end
 end
 
