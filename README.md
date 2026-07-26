@@ -13,6 +13,7 @@ VSCode-style multi-root workspaces for Neovim. Group N folders under one workspa
 - Per-workspace LSP settings overrides
 - Statusline component
 - Clean handoff on close/switch: wipes workspace file buffers and terminals, keeps unrelated buffers
+- Ships a JSON schema — auto-registered with `jsonls` for completion + validation inside `.nvim-workspace.json`
 
 > **Status:** v1. File tree with multiple roots is planned for v2 (requires a custom neo-tree source).
 
@@ -148,6 +149,9 @@ require("multiroot").setup({
     wipe_buffers = true,      -- delete file buffers under the workspace folders (skips modified)
     close_terminals = true,   -- kill named-terminal buffers for the workspace
   },
+  schema = {
+    register = true,          -- auto-register workspace.json schema with jsonls
+  },
 })
 ```
 
@@ -218,6 +222,15 @@ Buffers outside the workspace folders (help pages, scratch buffers, unrelated fi
 When a workspace is opened, each folder is added to every attached LSP client via `workspace/didChangeWorkspaceFolders`. For LSP clients that attach later (e.g. when you open a file in a different folder), an `LspAttach` autocmd adds the workspace folders automatically.
 
 Not every language server honors multi-root — some indexes are still cwd-scoped. For those, use `:WorkspaceFiles` / `:WorkspaceGrep` to jump between folders.
+
+## JSON schema
+
+A schema at `schemas/workspace.json` describes every valid field of the workspace file. On `setup()` it's auto-registered with `jsonls` so `.nvim-workspace.json` gets completion, hover docs, and validation.
+
+To disable: `opts.schema.register = false`. To grab the path for manual registration (e.g. with SchemaStore.nvim):
+```lua
+require("multiroot").schema_path()
+```
 
 ## Roadmap
 

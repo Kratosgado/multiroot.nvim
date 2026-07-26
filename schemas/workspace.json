@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/multiroot.nvim/schemas/workspace.json",
+  "title": "multiroot.nvim workspace",
+  "description": "Multi-root Neovim workspace declaration",
+  "type": "object",
+  "required": ["folders"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable workspace name. Used for session filename and statusline. Defaults to the workspace file's basename without extension.",
+      "minLength": 1
+    },
+    "folders": {
+      "type": "array",
+      "description": "List of root folders (absolute paths or paths with ~). Neovim cd's into the first folder on open; all folders are added as LSP workspace roots.",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "terminals": {
+      "type": "array",
+      "description": "Long-running named terminals. Re-launching focuses the existing buffer.",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique identifier for :WorkspaceTermRun and buffer reuse.",
+            "minLength": 1
+          },
+          "folder": {
+            "type": "string",
+            "description": "Folder basename (matched against `folders`) or absolute path. Defaults to the first workspace folder."
+          },
+          "cmd": {
+            "type": "string",
+            "description": "Shell command to run. Omit for a plain interactive shell."
+          },
+          "env": {
+            "type": "string",
+            "description": "Name of an env profile from `envs` to layer onto the spawned process."
+          },
+          "position": {
+            "type": "string",
+            "description": "Passed to the terminal backend (snacks.terminal). Common values: bottom, float, right.",
+            "enum": ["bottom", "top", "left", "right", "float"]
+          },
+          "autostart": {
+            "type": "boolean",
+            "description": "Launch this terminal automatically when the workspace opens.",
+            "default": false
+          }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "description": "One-shot commands. Each run opens a fresh terminal split; no autostart, no reuse.",
+      "items": {
+        "type": "object",
+        "required": ["name", "cmd"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Task identifier for :WorkspaceTask.",
+            "minLength": 1
+          },
+          "cmd": {
+            "type": "string",
+            "description": "Shell command to run.",
+            "minLength": 1
+          },
+          "folder": {
+            "type": "string",
+            "description": "Folder basename or absolute path. Defaults to the first workspace folder."
+          },
+          "env": {
+            "type": "string",
+            "description": "Name of an env profile from `envs` to layer onto the spawned process."
+          },
+          "position": {
+            "type": "string",
+            "enum": ["bottom", "top", "left", "right", "float"]
+          },
+          "interactive": {
+            "type": "boolean",
+            "description": "Keep the terminal open for input after the command exits (snacks backend only).",
+            "default": false
+          }
+        }
+      }
+    },
+    "env": {
+      "type": "object",
+      "description": "Always-on environment variables applied to vim.env when the workspace opens. Previous values are restored on close. Inherited by every terminal and task.",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean"]
+      }
+    },
+    "envs": {
+      "type": "object",
+      "description": "Named env profiles. Reference from a terminal or task via \"env\": \"<name>\". Only the referenced profile's vars flow into that child process; Neovim's own vim.env stays on `env`.",
+      "additionalProperties": {
+        "type": "object",
+        "description": "One env profile.",
+        "additionalProperties": {
+          "type": ["string", "number", "boolean"]
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "description": "Per-workspace settings.",
+      "additionalProperties": false,
+      "properties": {
+        "lsp": {
+          "type": "object",
+          "description": "Per-LSP-server config patch. Keys are server names (lua_ls, pyright, tsserver, ...). Values are merged into vim.lsp.config for that server on open; attached clients are notified via workspace/didChangeConfiguration. Reverted on close. Requires Neovim 0.11+.",
+          "additionalProperties": {
+            "type": "object",
+            "description": "Patch merged into vim.lsp.config[server_name].",
+            "properties": {
+              "settings": {
+                "type": "object",
+                "description": "Server-specific settings sent via didChangeConfiguration."
+              },
+              "cmd": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "init_options": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -14,6 +14,10 @@ function M.setup(opts)
   require("multiroot.keymap").setup()
 
   local cfg = config.get()
+  if cfg.schema and cfg.schema.register then
+    require("multiroot.schema").register(cfg)
+  end
+
   if cfg.auto_load then
     local function try_auto_load()
       local workspace = require("multiroot.workspace")
@@ -242,6 +246,10 @@ function M.edit()
     return
   end
   vim.cmd("edit " .. vim.fn.fnameescape(state.current.file))
+end
+
+function M.schema_path()
+  return require("multiroot.schema").path()
 end
 
 return M

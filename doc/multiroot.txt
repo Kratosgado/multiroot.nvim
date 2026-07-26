@@ -21,7 +21,8 @@ CONTENTS                                                    *multiroot-contents*
   8. Events ............................... |multiroot-events|
   9. Statusline ........................... |multiroot-statusline|
  10. Close / switch behavior .............. |multiroot-close|
- 11. Health check ......................... |multiroot-health|
+ 11. JSON schema .......................... |multiroot-schema|
+ 12. Health check ......................... |multiroot-health|
 
 ==============================================================================
 1. INTRODUCTION                                         *multiroot-introduction*
@@ -371,7 +372,45 @@ following, in order:
 Buffers outside the workspace (help, scratch, unrelated files) are untouched.
 
 ==============================================================================
-11. HEALTH CHECK                                              *multiroot-health*
+11. JSON SCHEMA                                              *multiroot-schema*
+
+The plugin ships a JSON schema at `schemas/workspace.json` describing every
+valid field of a workspace file. On `setup()`, it is auto-registered with
+`jsonls` (if configured) so editing `.nvim-workspace.json` gets completion,
+hover, and validation for free.
+
+Disable auto-registration if you manage jsonls schemas yourself: >lua
+
+  require("multiroot").setup({
+    schema = { register = false },
+  })
+<
+
+Get the on-disk path for manual registration (SchemaStore.nvim, custom
+setups, other language servers): >lua
+
+  require("multiroot").schema_path()
+<
+
+Example manual jsonls config: >lua
+
+  vim.lsp.config("jsonls", {
+    settings = {
+      json = {
+        schemas = {
+          {
+            fileMatch = { ".nvim-workspace.json" },
+            url = "file://" .. require("multiroot").schema_path(),
+          },
+        },
+        validate = { enable = true },
+      },
+    },
+  })
+<
+
+==============================================================================
+12. HEALTH CHECK                                              *multiroot-health*
 
 `:checkhealth multiroot` reports:
   - Neovim version compatibility

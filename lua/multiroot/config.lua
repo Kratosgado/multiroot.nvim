@@ -22,6 +22,9 @@ M.defaults = {
     wipe_buffers = true,   -- delete file buffers under the workspace folders
     close_terminals = true, -- delete named terminal buffers for the workspace
   },
+  schema = {
+    register = true,       -- auto-register workspace.json schema with jsonls
+  },
 }
 
 M.options = vim.deepcopy(M.defaults)
