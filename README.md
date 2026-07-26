@@ -26,8 +26,7 @@ VSCode-style multi-root workspaces for Neovim. Group N folders under one workspa
 
 ```lua
 {
-  "multiroot.nvim",
-  dir = "~/projects/configs/multiroot.nvim",
+  "kratosgado/multiroot.nvim",
   event = "VeryLazy",
   opts = {
     -- these keys only exist while a workspace is active; removed on close
@@ -60,13 +59,24 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     "~/projects/acme-shared"
   ],
   "terminals": [
-    { "name": "backend-dev",  "folder": "acme-backend",  "cmd": "npm run dev", "env": "dev", "autostart": true },
-    { "name": "backend-prod", "folder": "acme-backend",  "cmd": "npm start",   "env": "prod" },
-    { "name": "shell",        "folder": "acme-shared" }
+    {
+      "name": "backend-dev",
+      "folder": "acme-backend",
+      "cmd": "npm run dev",
+      "env": "dev",
+      "autostart": true
+    },
+    {
+      "name": "backend-prod",
+      "folder": "acme-backend",
+      "cmd": "npm start",
+      "env": "prod"
+    },
+    { "name": "shell", "folder": "acme-shared" }
   ],
   "tasks": [
-    { "name": "build",  "folder": "acme-backend",  "cmd": "make" },
-    { "name": "test",   "folder": "acme-backend",  "cmd": "pytest -q" },
+    { "name": "build", "folder": "acme-backend", "cmd": "make" },
+    { "name": "test", "folder": "acme-backend", "cmd": "pytest -q" },
     { "name": "deploy-prod", "cmd": "./scripts/deploy.sh", "env": "prod" }
   ],
   "env": {
@@ -74,9 +84,9 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     "DATABASE_URL": "postgres://localhost/acme"
   },
   "envs": {
-    "dev":     { "API_URL": "http://localhost:3000", "NODE_ENV": "development" },
+    "dev": { "API_URL": "http://localhost:3000", "NODE_ENV": "development" },
     "staging": { "API_URL": "https://staging.acme.com", "NODE_ENV": "staging" },
-    "prod":    { "API_URL": "https://api.acme.com",     "NODE_ENV": "production" }
+    "prod": { "API_URL": "https://api.acme.com", "NODE_ENV": "production" }
   },
   "settings": {
     "lsp": {
@@ -101,25 +111,25 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 
 ## Commands
 
-| Command | Description |
-|---|---|
-| `:WorkspaceOpen [file]` | Open a workspace by path, or pick from recent |
-| `:WorkspaceClose` | Close the active workspace (saves session) |
-| `:WorkspaceEdit` | Open the current workspace's JSON file for editing |
+| Command                                | Description                                                   |
+| -------------------------------------- | ------------------------------------------------------------- |
+| `:WorkspaceOpen [file]`                | Open a workspace by path, or pick from recent                 |
+| `:WorkspaceClose`                      | Close the active workspace (saves session)                    |
+| `:WorkspaceEdit`                       | Open the current workspace's JSON file for editing            |
 | `:WorkspaceCreate <file> [folders...]` | Create a workspace file (defaults to cwd if no folders given) |
-| `:WorkspaceAddFolder [dir]` | Add a folder to the active workspace |
-| `:WorkspaceRemoveFolder <dir>` | Remove a folder from the active workspace |
-| `:WorkspaceList` | Print the active workspace |
-| `:WorkspaceRecent` | Pick from recent workspaces |
-| `:WorkspaceFiles` | Fuzzy-find files across all folders |
-| `:WorkspaceGrep` | Live-grep across all folders |
-| `:WorkspaceTerm [folder]` | Open a terminal in a workspace folder (picker if omitted) |
-| `:WorkspaceTermRun [name]` | Launch (or focus) a named terminal from the workspace file |
-| `:WorkspaceTermList` | List named terminals declared in the workspace |
-| `:WorkspaceTask [name]` | Run a task (picker if omitted) |
-| `:WorkspaceTaskList` | List workspace tasks |
-| `:WorkspaceSaveSession` | Force save the current session |
-| `:WorkspaceLoadSession` | Restore the active workspace's session |
+| `:WorkspaceAddFolder [dir]`            | Add a folder to the active workspace                          |
+| `:WorkspaceRemoveFolder <dir>`         | Remove a folder from the active workspace                     |
+| `:WorkspaceList`                       | Print the active workspace                                    |
+| `:WorkspaceRecent`                     | Pick from recent workspaces                                   |
+| `:WorkspaceFiles`                      | Fuzzy-find files across all folders                           |
+| `:WorkspaceGrep`                       | Live-grep across all folders                                  |
+| `:WorkspaceTerm [folder]`              | Open a terminal in a workspace folder (picker if omitted)     |
+| `:WorkspaceTermRun [name]`             | Launch (or focus) a named terminal from the workspace file    |
+| `:WorkspaceTermList`                   | List named terminals declared in the workspace                |
+| `:WorkspaceTask [name]`                | Run a task (picker if omitted)                                |
+| `:WorkspaceTaskList`                   | List workspace tasks                                          |
+| `:WorkspaceSaveSession`                | Force save the current session                                |
+| `:WorkspaceLoadSession`                | Restore the active workspace's session                        |
 
 ## Configuration
 
@@ -228,6 +238,7 @@ Not every language server honors multi-root — some indexes are still cwd-scope
 A schema at `schemas/workspace.json` describes every valid field of the workspace file. On `setup()` it's auto-registered with `jsonls` so `.nvim-workspace.json` gets completion, hover docs, and validation.
 
 To disable: `opts.schema.register = false`. To grab the path for manual registration (e.g. with SchemaStore.nvim):
+
 ```lua
 require("multiroot").schema_path()
 ```
