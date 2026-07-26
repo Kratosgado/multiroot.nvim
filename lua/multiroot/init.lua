@@ -92,11 +92,11 @@ function M.close(opts)
   end
   local ws = state.current
   local folders = state.folders()
-  if config.close and config.close.close_terminals then
+  if config.on_close and config.on_close.close_terminals then
     require("multiroot.terminal").close_all_for_current()
   end
   local wiped, skipped = 0, 0
-  if config.close and config.close.wipe_buffers then
+  if config.on_close and config.on_close.wipe_buffers then
     wiped, skipped = require("multiroot.buffers").wipe_folders(folders)
   end
   if config.lsp.enabled then

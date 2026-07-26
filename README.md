@@ -8,6 +8,7 @@ VSCode-style multi-root workspaces for Neovim. Group N folders under one workspa
 - Recent workspaces picker
 - Auto-load a workspace when `nvim` is launched inside a folder with a `.nvim-workspace.json`
 - Folder-scoped and named terminals declared in the workspace file
+- Clean handoff on close/switch: wipes workspace file buffers and terminals, keeps unrelated buffers
 
 > **Status:** v1. File tree with multiple roots is planned for v2 (requires a custom neo-tree source).
 
@@ -108,6 +109,10 @@ require("multiroot").setup({
   terminal = {
     autostart = true,         -- run terminals with autostart: true on open
   },
+  on_close = {
+    wipe_buffers = true,      -- delete file buffers under the workspace folders (skips modified)
+    close_terminals = true,   -- kill named-terminal buffers for the workspace
+  },
 })
 ```
 
@@ -144,6 +149,18 @@ vim.api.nvim_create_autocmd("User", {
   end,
 })
 ```
+
+## Closing / switching workspaces
+
+`:WorkspaceClose` (and opening a different workspace on top of an active one) does the following, in order:
+
+1. Saves the workspace session (if `session.autosave` is enabled)
+2. Kills the workspace's named terminals (`on_close.close_terminals`)
+3. Wipes file buffers whose path is under any of the workspace folders (`on_close.wipe_buffers`) — modified buffers are kept, and the count is included in the notification
+4. Removes each folder from every attached LSP client
+5. Fires `User MultirootClosed`
+
+Buffers outside the workspace folders (help pages, scratch buffers, unrelated files) are untouched. Set either `on_close.wipe_buffers = false` or `on_close.close_terminals = false` to opt out.
 
 ## How multi-root LSP works
 

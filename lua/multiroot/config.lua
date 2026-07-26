@@ -18,7 +18,7 @@ M.defaults = {
   terminal = {
     autostart = true,
   },
-  close = {
+  on_close = {
     wipe_buffers = true,   -- delete file buffers under the workspace folders
     close_terminals = true, -- delete named terminal buffers for the workspace
   },
