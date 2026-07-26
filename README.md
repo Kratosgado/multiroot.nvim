@@ -59,14 +59,14 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     "~/projects/acme-shared"
   ],
   "terminals": [
-    { "name": "backend",  "folder": "acme-backend",  "cmd": "npm run dev", "autostart": true },
-    { "name": "frontend", "folder": "acme-frontend", "cmd": "npm start" },
-    { "name": "shell",    "folder": "acme-shared" }
+    { "name": "backend-dev",  "folder": "acme-backend",  "cmd": "npm run dev", "env": "dev", "autostart": true },
+    { "name": "backend-prod", "folder": "acme-backend",  "cmd": "npm start",   "env": "prod" },
+    { "name": "shell",        "folder": "acme-shared" }
   ],
   "tasks": [
     { "name": "build",  "folder": "acme-backend",  "cmd": "make" },
     { "name": "test",   "folder": "acme-backend",  "cmd": "pytest -q" },
-    { "name": "deploy", "cmd": "./scripts/deploy.sh" }
+    { "name": "deploy-prod", "cmd": "./scripts/deploy.sh", "env": "prod" }
   ],
   "env": {
     "AWS_PROFILE": "acme-dev",
@@ -92,10 +92,10 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 
 `folder` may be the folder's basename (matched against the workspace `folders` list) or an absolute path. Paths can be absolute or use `~`. When a workspace is opened, Neovim `cd`s into the first folder.
 
-- **terminals** — long-running processes; reopening a named terminal focuses the existing buffer. `autostart: true` launches on open. Omit `cmd` for a plain shell.
-- **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse.
-- **env** — always-on base env for the workspace. Set on open (previous values snapshotted), restored on close.
-- **envs** — named profiles layered on top of `env`. Switch with `:WorkspaceEnv <name>` or the picker (`:WorkspaceEnv`). Only one profile active at a time; switching cleanly restores then re-applies. Reset to just `env` with `:WorkspaceEnv --reset`. The active profile shows in the statusline as `[name]`.
+- **terminals** — long-running processes; reopening a named terminal focuses the existing buffer. `autostart: true` launches on open. Omit `cmd` for a plain shell. `env: "profile"` layers a named profile onto the spawned process.
+- **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse. Also supports `env: "profile"`.
+- **env** — always-on base env for the workspace. Set on open (previous values snapshotted), restored on close. Inherited by all terminals/tasks automatically.
+- **envs** — named profiles. Referenced per-terminal / per-task via `"env": "<name>"`. Vars flow only into that child process — Neovim's own `vim.env` stays on the base. This means you can run `backend-dev` and `backend-prod` terminals side by side in different profiles.
 - **settings.lsp** — per-server config patch merged into `vim.lsp.config`; attached clients are notified via `workspace/didChangeConfiguration`. Reverted on close. Requires Neovim 0.11+.
 
 ## Commands
@@ -104,6 +104,7 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 |---|---|
 | `:WorkspaceOpen [file]` | Open a workspace by path, or pick from recent |
 | `:WorkspaceClose` | Close the active workspace (saves session) |
+| `:WorkspaceEdit` | Open the current workspace's JSON file for editing |
 | `:WorkspaceCreate <file> [folders...]` | Create a workspace file (defaults to cwd if no folders given) |
 | `:WorkspaceAddFolder [dir]` | Add a folder to the active workspace |
 | `:WorkspaceRemoveFolder <dir>` | Remove a folder from the active workspace |
@@ -116,7 +117,6 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 | `:WorkspaceTermList` | List named terminals declared in the workspace |
 | `:WorkspaceTask [name]` | Run a task (picker if omitted) |
 | `:WorkspaceTaskList` | List workspace tasks |
-| `:WorkspaceEnv [name\|--reset]` | Switch env profile (picker if omitted) |
 | `:WorkspaceSaveSession` | Force save the current session |
 | `:WorkspaceLoadSession` | Restore the active workspace's session |
 
@@ -168,8 +168,7 @@ mr.recent()           -- open recent-workspaces picker
 mr.terminal(folder?)  -- open terminal in folder (picker if nil)
 mr.terminal_run(name?)-- launch/focus a named terminal (picker if nil)
 mr.task(name?)        -- run a task (picker if nil)
-mr.env(name?)         -- switch env profile ("--reset" for base; picker if nil)
-mr.env_active()       -- name of active profile, or nil
+mr.edit()             -- open the current workspace file for editing
 mr.statusline(opts?)  -- string for lualine/heirline/etc. opts: { icon = true, folder = true, bufnr = 0 }
 ```
 

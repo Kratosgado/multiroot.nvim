@@ -5,25 +5,17 @@ local M = {}
 
 local SENTINEL = "\0"
 local saved = {}
-local active_profile = nil
-
-local function snapshot_and_set(map)
-  for k, v in pairs(map or {}) do
-    if saved[k] == nil then
-      local prev = vim.env[k]
-      saved[k] = prev == nil and SENTINEL or prev
-    end
-    vim.env[k] = v
-  end
-end
 
 function M.apply()
   if not state.is_active() then
     return
   end
   saved = {}
-  active_profile = nil
-  snapshot_and_set(state.current.env)
+  for k, v in pairs(state.current.env or {}) do
+    local prev = vim.env[k]
+    saved[k] = prev == nil and SENTINEL or prev
+    vim.env[k] = v
+  end
 end
 
 function M.restore()
@@ -35,7 +27,29 @@ function M.restore()
     end
   end
   saved = {}
-  active_profile = nil
+end
+
+--- Returns the env delta to pass to a spawned process for a given profile name.
+--- Only includes the named profile's vars (base env is inherited from vim.env).
+--- Returns nil if no profile requested or profile doesn't exist.
+function M.resolve(profile)
+  if not profile or profile == "" then
+    return nil
+  end
+  if not state.is_active() then
+    return nil
+  end
+  local envs = state.current.envs or {}
+  local map = envs[profile]
+  if not map then
+    util.notify("unknown env profile '" .. profile .. "'", vim.log.levels.WARN)
+    return nil
+  end
+  local copy = {}
+  for k, v in pairs(map) do
+    copy[k] = v
+  end
+  return copy
 end
 
 function M.profiles()
@@ -48,70 +62,6 @@ function M.profiles()
   end
   table.sort(names)
   return names
-end
-
-function M.active()
-  return active_profile
-end
-
-function M.switch(name)
-  if not state.is_active() then
-    util.notify("no workspace open", vim.log.levels.WARN)
-    return false
-  end
-  local envs = state.current.envs or {}
-  local target = envs[name]
-  if not target then
-    util.notify("no env profile named '" .. tostring(name) .. "'", vim.log.levels.WARN)
-    return false
-  end
-  M.restore()
-  snapshot_and_set(state.current.env)
-  snapshot_and_set(target)
-  active_profile = name
-  util.notify("env profile: " .. name)
-  return true
-end
-
-function M.reset()
-  if not state.is_active() then
-    return
-  end
-  M.restore()
-  snapshot_and_set(state.current.env)
-  util.notify("env profile: (base)")
-end
-
-function M.pick()
-  local names = M.profiles()
-  if #names == 0 then
-    util.notify("workspace defines no env profiles")
-    return
-  end
-  local items = { "(base)" }
-  for _, n in ipairs(names) do
-    table.insert(items, n)
-  end
-  vim.ui.select(items, {
-    prompt = "Env profile:",
-    format_item = function(item)
-      if item == active_profile then
-        return "* " .. item
-      elseif item == "(base)" and active_profile == nil then
-        return "* " .. item
-      end
-      return "  " .. item
-    end,
-  }, function(choice)
-    if not choice then
-      return
-    end
-    if choice == "(base)" then
-      M.reset()
-    else
-      M.switch(choice)
-    end
-  end)
 end
 
 return M

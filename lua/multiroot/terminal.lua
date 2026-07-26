@@ -60,6 +60,9 @@ local function open_snacks(opts)
     cwd = opts.cwd,
     win = { position = opts.position or "bottom" },
   }
+  if opts.env then
+    sopts.env = opts.env
+  end
   local cmd = opts.cmd
   if cmd and cmd ~= "" then
     return _G.Snacks.terminal.open(cmd, sopts)
@@ -72,11 +75,15 @@ local function open_builtin(opts)
   local prev = vim.fn.getcwd()
   local ok_cd = pcall(vim.cmd, "lcd " .. vim.fn.fnameescape(opts.cwd))
   local shell = vim.o.shell
+  local job_opts = {}
+  if opts.env then
+    job_opts.env = opts.env
+  end
   local cmd = opts.cmd
   if cmd and cmd ~= "" then
-    vim.fn.termopen({ shell, "-c", cmd })
+    vim.fn.termopen({ shell, "-c", cmd }, job_opts)
   else
-    vim.fn.termopen(shell)
+    vim.fn.termopen(shell, job_opts)
   end
   local bufnr = vim.api.nvim_get_current_buf()
   if not ok_cd then
@@ -93,13 +100,14 @@ local function open_term(opts)
   return open_builtin(opts)
 end
 
-function M.open_folder(folder)
+function M.open_folder(folder, profile)
   if not state.is_active() then
     util.notify("no workspace open", vim.log.levels.WARN)
     return
   end
   local cwd = resolve_folder(folder)
-  return open_term({ cwd = cwd })
+  local env = require("multiroot.env").resolve(profile)
+  return open_term({ cwd = cwd, env = env })
 end
 
 function M.run_named(name)
@@ -126,7 +134,8 @@ function M.run_named(name)
     return existing
   end
   local cwd = resolve_folder(spec.folder)
-  local term = open_term({ cwd = cwd, cmd = spec.cmd, position = spec.position })
+  local env = require("multiroot.env").resolve(spec.env)
+  local term = open_term({ cwd = cwd, cmd = spec.cmd, position = spec.position, env = env })
   local bufnr
   if type(term) == "table" then
     bufnr = term.buf or (term.win and vim.api.nvim_win_get_buf(term.win))

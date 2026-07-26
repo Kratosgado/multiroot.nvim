@@ -39,6 +39,7 @@ function M.read(path)
         cmd = type(t.cmd) == "string" and t.cmd or nil,
         position = type(t.position) == "string" and t.position or nil,
         autostart = t.autostart == true,
+        env = type(t.env) == "string" and t.env or nil,
       })
     end
   end
@@ -51,6 +52,7 @@ function M.read(path)
         folder = type(t.folder) == "string" and t.folder or nil,
         position = type(t.position) == "string" and t.position or nil,
         interactive = t.interactive == true,
+        env = type(t.env) == "string" and t.env or nil,
       })
     end
   end

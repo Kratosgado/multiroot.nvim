@@ -31,7 +31,6 @@ function M.get(opts)
   end
   opts = opts or {}
   local show_folder = opts.folder ~= false
-  local show_env = opts.env ~= false
   local parts = {}
   if opts.icon ~= false then
     table.insert(parts, M.icon)
@@ -44,12 +43,6 @@ function M.get(opts)
     end
   end
   table.insert(parts, name)
-  if show_env then
-    local profile = require("multiroot.env").active()
-    if profile then
-      table.insert(parts, "[" .. profile .. "]")
-    end
-  end
   return table.concat(parts, " ")
 end
 
