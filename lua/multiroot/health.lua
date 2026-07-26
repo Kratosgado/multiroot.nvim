@@ -43,6 +43,12 @@ function M.check()
     warn("No supported picker (snacks.nvim or fzf-lua) — files/grep commands will not work")
   end
 
+  if snacks then
+    ok("Terminal backend: snacks.terminal")
+  else
+    info("Terminal backend: built-in :terminal (install snacks.nvim for better UX)")
+  end
+
   local config = require("multiroot.config").get()
   if vim.fn.isdirectory(config.data_dir) == 1 then
     ok("Data dir: " .. config.data_dir)

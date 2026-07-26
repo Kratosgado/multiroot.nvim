@@ -7,6 +7,7 @@ VSCode-style multi-root workspaces for Neovim. Group N folders under one workspa
 - Per-workspace session save/restore (open buffers, layout, cursor)
 - Recent workspaces picker
 - Auto-load a workspace when `nvim` is launched inside a folder with a `.nvim-workspace.json`
+- Folder-scoped and named terminals declared in the workspace file
 
 > **Status:** v1. File tree with multiple roots is planned for v2 (requires a custom neo-tree source).
 
@@ -51,9 +52,16 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     "~/projects/acme-frontend",
     "~/projects/acme-backend",
     "~/projects/acme-shared"
+  ],
+  "terminals": [
+    { "name": "backend",  "folder": "acme-backend",  "cmd": "npm run dev", "autostart": true },
+    { "name": "frontend", "folder": "acme-frontend", "cmd": "npm start" },
+    { "name": "shell",    "folder": "acme-shared" }
   ]
 }
 ```
+
+`folder` may be the folder's basename (matched against the workspace `folders` list) or an absolute path. Omit `cmd` to open a plain shell. Set `autostart: true` to launch the terminal automatically when the workspace opens.
 
 Paths can be absolute or use `~`. When a workspace is opened, Neovim `cd`s into the first folder.
 
@@ -70,6 +78,9 @@ Paths can be absolute or use `~`. When a workspace is opened, Neovim `cd`s into 
 | `:WorkspaceRecent` | Pick from recent workspaces |
 | `:WorkspaceFiles` | Fuzzy-find files across all folders |
 | `:WorkspaceGrep` | Live-grep across all folders |
+| `:WorkspaceTerm [folder]` | Open a terminal in a workspace folder (picker if omitted) |
+| `:WorkspaceTermRun [name]` | Launch (or focus) a named terminal from the workspace file |
+| `:WorkspaceTermList` | List named terminals declared in the workspace |
 | `:WorkspaceSaveSession` | Force save the current session |
 | `:WorkspaceLoadSession` | Restore the active workspace's session |
 
@@ -94,6 +105,9 @@ require("multiroot").setup({
   keys_when_active = {
     -- { "<leader>qf", "<cmd>WorkspaceFiles<cr>", desc = "Workspace: files", mode = "n" },
   },
+  terminal = {
+    autostart = true,         -- run terminals with autostart: true on open
+  },
 })
 ```
 
@@ -111,6 +125,8 @@ mr.folders()          -- list of active folder paths
 mr.files()            -- open files picker
 mr.grep()             -- open grep picker
 mr.recent()           -- open recent-workspaces picker
+mr.terminal(folder?)  -- open terminal in folder (picker if nil)
+mr.terminal_run(name?)-- launch/focus a named terminal (picker if nil)
 ```
 
 ## Events

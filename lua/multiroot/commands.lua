@@ -83,6 +83,68 @@ function M.setup()
     util.notify("session saved")
   end, { desc = "Save the current workspace session" })
 
+  vim.api.nvim_create_user_command("WorkspaceTerm", function(args)
+    mr.terminal(args.args)
+  end, {
+    nargs = "?",
+    complete = function()
+      local folders = state.folders()
+      local names = {}
+      for _, f in ipairs(folders) do
+        table.insert(names, vim.fn.fnamemodify(f, ":t"))
+        table.insert(names, f)
+      end
+      return names
+    end,
+    desc = "Open a terminal in a workspace folder (picker if no arg)",
+  })
+
+  vim.api.nvim_create_user_command("WorkspaceTermRun", function(args)
+    mr.terminal_run(args.args)
+  end, {
+    nargs = "?",
+    complete = function()
+      if not state.is_active() then
+        return {}
+      end
+      local names = {}
+      for _, t in ipairs(state.current.terminals or {}) do
+        table.insert(names, t.name)
+      end
+      return names
+    end,
+    desc = "Run a named terminal from the workspace file",
+  })
+
+  vim.api.nvim_create_user_command("WorkspaceTermList", function()
+    if not state.is_active() then
+      util.notify("no workspace open")
+      return
+    end
+    local terms = state.current.terminals or {}
+    if #terms == 0 then
+      util.notify("no named terminals defined")
+      return
+    end
+    local lines = { "Named terminals:" }
+    for _, t in ipairs(terms) do
+      local parts = { "  " .. t.name }
+      if t.folder then
+        table.insert(parts, " [" .. t.folder .. "]")
+      end
+      if t.cmd then
+        table.insert(parts, " → " .. t.cmd)
+      end
+      if t.autostart then
+        table.insert(parts, " (autostart)")
+      end
+      table.insert(lines, table.concat(parts))
+    end
+    vim.api.nvim_echo(vim.tbl_map(function(l)
+      return { l .. "\n" }
+    end, lines), false, {})
+  end, { desc = "List named terminals in the current workspace" })
+
   vim.api.nvim_create_user_command("WorkspaceLoadSession", function()
     if not state.is_active() then
       util.notify("no workspace open", vim.log.levels.WARN)

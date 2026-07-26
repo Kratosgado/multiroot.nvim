@@ -30,11 +30,24 @@ function M.read(path)
       name = vim.fn.fnamemodify(path, ":h:t")
     end
   end
+  local terminals = {}
+  for _, t in ipairs(decoded.terminals or {}) do
+    if type(t) == "table" and type(t.name) == "string" then
+      table.insert(terminals, {
+        name = t.name,
+        folder = type(t.folder) == "string" and t.folder or nil,
+        cmd = type(t.cmd) == "string" and t.cmd or nil,
+        position = type(t.position) == "string" and t.position or nil,
+        autostart = t.autostart == true,
+      })
+    end
+  end
   return {
     name = name,
     file = path,
     folders = folders,
     settings = decoded.settings or {},
+    terminals = terminals,
   }
 end
 
@@ -46,6 +59,9 @@ function M.write(path, ws)
   }
   if ws.settings and next(ws.settings) then
     payload.settings = ws.settings
+  end
+  if ws.terminals and #ws.terminals > 0 then
+    payload.terminals = ws.terminals
   end
   local encoded = util.encode_pretty(payload)
   if not encoded then

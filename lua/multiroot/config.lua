@@ -15,6 +15,9 @@ M.defaults = {
   picker = "auto",
   notify = true,
   keys_when_active = {},
+  terminal = {
+    autostart = true,
+  },
 }
 
 M.options = vim.deepcopy(M.defaults)

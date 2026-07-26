@@ -70,6 +70,9 @@ function M.open(path)
   if config.session.autoload then
     session.load(ws.name)
   end
+  if config.terminal and config.terminal.autostart then
+    require("multiroot.terminal").autostart()
+  end
   util.notify("opened " .. ws.name .. " (" .. #ws.folders .. " folders)")
   return true
 end
@@ -181,6 +184,22 @@ end
 
 function M.recent()
   require("multiroot.picker").pick_recent()
+end
+
+function M.terminal(folder)
+  if folder and folder ~= "" then
+    require("multiroot.terminal").open_folder(folder)
+  else
+    require("multiroot.terminal").pick_folder()
+  end
+end
+
+function M.terminal_run(name)
+  if name and name ~= "" then
+    require("multiroot.terminal").run_named(name)
+  else
+    require("multiroot.terminal").pick_named()
+  end
 end
 
 return M
