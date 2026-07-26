@@ -90,14 +90,30 @@ function M.close(opts)
   if config.session.autosave then
     session.save()
   end
-  if config.lsp.enabled then
-    lsp.remove_all(state.folders())
-  end
   local ws = state.current
+  local folders = state.folders()
+  if config.close and config.close.close_terminals then
+    require("multiroot.terminal").close_all_for_current()
+  end
+  local wiped, skipped = 0, 0
+  if config.close and config.close.wipe_buffers then
+    wiped, skipped = require("multiroot.buffers").wipe_folders(folders)
+  end
+  if config.lsp.enabled then
+    lsp.remove_all(folders)
+  end
   state.clear()
   emit("MultirootClosed", ws)
   if not opts.silent then
-    util.notify("closed " .. ws.name)
+    local msg = "closed " .. ws.name
+    if wiped > 0 then
+      msg = msg .. " (" .. wiped .. " buffers wiped"
+      if skipped and skipped > 0 then
+        msg = msg .. ", " .. skipped .. " unsaved kept"
+      end
+      msg = msg .. ")"
+    end
+    util.notify(msg)
   end
   return true
 end
