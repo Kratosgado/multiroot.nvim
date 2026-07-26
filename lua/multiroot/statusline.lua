@@ -31,18 +31,26 @@ function M.get(opts)
   end
   opts = opts or {}
   local show_folder = opts.folder ~= false
+  local show_env = opts.env ~= false
   local parts = {}
   if opts.icon ~= false then
     table.insert(parts, M.icon)
   end
-  table.insert(parts, state.current.name)
+  local name = state.current.name
   if show_folder then
     local folder = current_folder_of_buffer(opts.bufnr)
     if folder then
-      table.insert(parts, M.separator .. vim.fn.fnamemodify(folder, ":t"))
+      name = name .. M.separator .. vim.fn.fnamemodify(folder, ":t")
     end
   end
-  return table.concat(parts, " "):gsub("%s+" .. M.separator, M.separator)
+  table.insert(parts, name)
+  if show_env then
+    local profile = require("multiroot.env").active()
+    if profile then
+      table.insert(parts, "[" .. profile .. "]")
+    end
+  end
+  return table.concat(parts, " ")
 end
 
 function M.name()

@@ -116,6 +116,25 @@ function M.setup()
     desc = "Run a named terminal from the workspace file",
   })
 
+  vim.api.nvim_create_user_command("WorkspaceEnv", function(args)
+    local env = require("multiroot.env")
+    if args.args == "" then
+      env.pick()
+    elseif args.args == "--reset" or args.args == "base" then
+      env.reset()
+    else
+      env.switch(args.args)
+    end
+  end, {
+    nargs = "?",
+    complete = function()
+      local names = require("multiroot.env").profiles()
+      table.insert(names, 1, "--reset")
+      return names
+    end,
+    desc = "Switch env profile (picker if no arg; --reset for base)",
+  })
+
   vim.api.nvim_create_user_command("WorkspaceTask", function(args)
     mr.task(args.args)
   end, {

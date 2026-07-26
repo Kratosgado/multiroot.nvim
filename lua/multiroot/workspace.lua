@@ -54,11 +54,24 @@ function M.read(path)
       })
     end
   end
-  local env = {}
-  if type(decoded.env) == "table" then
-    for k, v in pairs(decoded.env) do
+  local function coerce_env_map(t)
+    local m = {}
+    if type(t) ~= "table" then
+      return m
+    end
+    for k, v in pairs(t) do
       if type(k) == "string" and (type(v) == "string" or type(v) == "number" or type(v) == "boolean") then
-        env[k] = tostring(v)
+        m[k] = tostring(v)
+      end
+    end
+    return m
+  end
+  local env = coerce_env_map(decoded.env)
+  local envs = {}
+  if type(decoded.envs) == "table" then
+    for name, map in pairs(decoded.envs) do
+      if type(name) == "string" then
+        envs[name] = coerce_env_map(map)
       end
     end
   end
@@ -70,6 +83,7 @@ function M.read(path)
     terminals = terminals,
     tasks = tasks,
     env = env,
+    envs = envs,
   }
 end
 
@@ -90,6 +104,9 @@ function M.write(path, ws)
   end
   if ws.env and next(ws.env) then
     payload.env = ws.env
+  end
+  if ws.envs and next(ws.envs) then
+    payload.envs = ws.envs
   end
   local encoded = util.encode_pretty(payload)
   if not encoded then

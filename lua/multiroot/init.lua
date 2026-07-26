@@ -234,4 +234,19 @@ function M.statusline(opts)
   return require("multiroot.statusline").get(opts)
 end
 
+function M.env(name)
+  local env = require("multiroot.env")
+  if not name or name == "" then
+    env.pick()
+  elseif name == "--reset" or name == "base" then
+    env.reset()
+  else
+    env.switch(name)
+  end
+end
+
+function M.env_active()
+  return require("multiroot.env").active()
+end
+
 return M

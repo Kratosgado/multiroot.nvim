@@ -72,6 +72,11 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     "AWS_PROFILE": "acme-dev",
     "DATABASE_URL": "postgres://localhost/acme"
   },
+  "envs": {
+    "dev":     { "API_URL": "http://localhost:3000", "NODE_ENV": "development" },
+    "staging": { "API_URL": "https://staging.acme.com", "NODE_ENV": "staging" },
+    "prod":    { "API_URL": "https://api.acme.com",     "NODE_ENV": "production" }
+  },
   "settings": {
     "lsp": {
       "lua_ls": {
@@ -89,7 +94,8 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 
 - **terminals** — long-running processes; reopening a named terminal focuses the existing buffer. `autostart: true` launches on open. Omit `cmd` for a plain shell.
 - **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse.
-- **env** — set on open (previous values snapshotted), restored on close.
+- **env** — always-on base env for the workspace. Set on open (previous values snapshotted), restored on close.
+- **envs** — named profiles layered on top of `env`. Switch with `:WorkspaceEnv <name>` or the picker (`:WorkspaceEnv`). Only one profile active at a time; switching cleanly restores then re-applies. Reset to just `env` with `:WorkspaceEnv --reset`. The active profile shows in the statusline as `[name]`.
 - **settings.lsp** — per-server config patch merged into `vim.lsp.config`; attached clients are notified via `workspace/didChangeConfiguration`. Reverted on close. Requires Neovim 0.11+.
 
 ## Commands
@@ -110,6 +116,7 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 | `:WorkspaceTermList` | List named terminals declared in the workspace |
 | `:WorkspaceTask [name]` | Run a task (picker if omitted) |
 | `:WorkspaceTaskList` | List workspace tasks |
+| `:WorkspaceEnv [name\|--reset]` | Switch env profile (picker if omitted) |
 | `:WorkspaceSaveSession` | Force save the current session |
 | `:WorkspaceLoadSession` | Restore the active workspace's session |
 
@@ -161,6 +168,8 @@ mr.recent()           -- open recent-workspaces picker
 mr.terminal(folder?)  -- open terminal in folder (picker if nil)
 mr.terminal_run(name?)-- launch/focus a named terminal (picker if nil)
 mr.task(name?)        -- run a task (picker if nil)
+mr.env(name?)         -- switch env profile ("--reset" for base; picker if nil)
+mr.env_active()       -- name of active profile, or nil
 mr.statusline(opts?)  -- string for lualine/heirline/etc. opts: { icon = true, folder = true, bufnr = 0 }
 ```
 
