@@ -22,14 +22,20 @@ VSCode-style multi-root workspaces for Neovim. Group N folders under one workspa
   "multiroot.nvim",
   dir = "~/projects/configs/multiroot.nvim",
   event = "VeryLazy",
-  opts = {},
+  opts = {
+    -- these keys only exist while a workspace is active; removed on close
+    keys_when_active = {
+      { "<leader>qc", "<cmd>WorkspaceClose<cr>",     desc = "Workspace: close" },
+      { "<leader>qf", "<cmd>WorkspaceFiles<cr>",     desc = "Workspace: files" },
+      { "<leader>qg", "<cmd>WorkspaceGrep<cr>",      desc = "Workspace: grep" },
+      { "<leader>qa", "<cmd>WorkspaceAddFolder<cr>", desc = "Workspace: add folder" },
+      { "<leader>qi", "<cmd>WorkspaceList<cr>",      desc = "Workspace: info" },
+    },
+  },
+  -- always-visible entry-point keys
   keys = {
-    { "<leader>qo", "<cmd>WorkspaceOpen<cr>",   desc = "Open workspace" },
-    { "<leader>qr", "<cmd>WorkspaceRecent<cr>", desc = "Recent workspaces" },
-    { "<leader>qc", "<cmd>WorkspaceClose<cr>",  desc = "Close workspace" },
-    { "<leader>qf", "<cmd>WorkspaceFiles<cr>",  desc = "Workspace files" },
-    { "<leader>qg", "<cmd>WorkspaceGrep<cr>",   desc = "Workspace grep" },
-    { "<leader>qa", "<cmd>WorkspaceAddFolder<cr>", desc = "Add folder" },
+    { "<leader>qo", "<cmd>WorkspaceOpen<cr>",   desc = "Workspace: open" },
+    { "<leader>qr", "<cmd>WorkspaceRecent<cr>", desc = "Workspace: recent" },
   },
 }
 ```
@@ -84,6 +90,10 @@ require("multiroot").setup({
   },
   picker = "auto",            -- "snacks" | "fzf" | "auto"
   notify = true,
+  -- keymaps registered on MultirootLoaded, deleted on MultirootClosed
+  keys_when_active = {
+    -- { "<leader>qf", "<cmd>WorkspaceFiles<cr>", desc = "Workspace: files", mode = "n" },
+  },
 })
 ```
 

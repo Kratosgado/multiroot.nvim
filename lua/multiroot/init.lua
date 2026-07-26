@@ -11,6 +11,7 @@ function M.setup(opts)
   require("multiroot.lsp").setup()
   require("multiroot.session").setup()
   require("multiroot.commands").setup()
+  require("multiroot.keymap").setup()
 
   local cfg = config.get()
   if cfg.auto_load then

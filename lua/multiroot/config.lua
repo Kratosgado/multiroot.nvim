@@ -14,6 +14,7 @@ M.defaults = {
   },
   picker = "auto",
   notify = true,
+  keys_when_active = {},
 }
 
 M.options = vim.deepcopy(M.defaults)
