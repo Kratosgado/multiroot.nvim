@@ -1,0 +1,384 @@
+*multiroot.txt*   VSCode-style multi-root workspaces for Neovim
+
+Author:  Essilfie Mbeah
+License: MIT
+
+==============================================================================
+CONTENTS                                                    *multiroot-contents*
+
+  1. Introduction ......................... |multiroot-introduction|
+  2. Requirements ......................... |multiroot-requirements|
+  3. Setup ................................ |multiroot-setup|
+  4. Workspace file ....................... |multiroot-workspace-file|
+     4.1 folders .......................... |multiroot-folders|
+     4.2 terminals ........................ |multiroot-terminals|
+     4.3 tasks ............................ |multiroot-tasks|
+     4.4 env / envs ....................... |multiroot-env|
+     4.5 settings.lsp ..................... |multiroot-lsp-settings|
+  5. Commands ............................. |multiroot-commands|
+  6. Configuration ........................ |multiroot-configuration|
+  7. Lua API .............................. |multiroot-api|
+  8. Events ............................... |multiroot-events|
+  9. Statusline ........................... |multiroot-statusline|
+ 10. Close / switch behavior .............. |multiroot-close|
+ 11. Health check ......................... |multiroot-health|
+
+==============================================================================
+1. INTRODUCTION                                         *multiroot-introduction*
+
+`multiroot.nvim` groups N folders into a single Neovim workspace, declared in
+a JSON file. Once a workspace is loaded:
+
+  - every LSP client sees all folders as workspace roots
+  - fuzzy-find and live-grep span every folder
+  - long-running terminals (dev servers, watchers) and one-shot tasks (build,
+    test, deploy) are declared in the workspace file
+  - env vars are set on open, restored on close
+  - named env profiles can be layered onto individual terminals/tasks
+  - sessions save/restore per workspace
+  - closing or switching wipes the workspace's buffers and terminals
+
+==============================================================================
+2. REQUIREMENTS                                         *multiroot-requirements*
+
+  - Neovim 0.9+ (0.11+ for `settings.lsp` overrides)
+  - Optional: snacks.nvim or fzf-lua (for :WorkspaceFiles / :WorkspaceGrep)
+  - Optional: snacks.nvim for a nicer terminal backend (falls back to built-in
+    :terminal in a bottom split)
+
+==============================================================================
+3. SETUP                                                        *multiroot-setup*
+
+With lazy.nvim: >lua
+
+  {
+    "multiroot.nvim",
+    dir = "~/projects/configs/multiroot.nvim",
+    event = "VeryLazy",
+    opts = {
+      keys_when_active = {
+        { "<leader>qc", "<cmd>WorkspaceClose<cr>",     desc = "Close" },
+        { "<leader>qf", "<cmd>WorkspaceFiles<cr>",     desc = "Files" },
+        { "<leader>qg", "<cmd>WorkspaceGrep<cr>",      desc = "Grep" },
+        { "<leader>qe", "<cmd>WorkspaceEdit<cr>",      desc = "Edit ws file" },
+        { "<leader>qt", "<cmd>WorkspaceTerm<cr>",      desc = "Terminal" },
+        { "<leader>qT", "<cmd>WorkspaceTermRun<cr>",   desc = "Named term" },
+        { "<leader>qx", "<cmd>WorkspaceTask<cr>",      desc = "Task" },
+      },
+    },
+    keys = {
+      { "<leader>qo", "<cmd>WorkspaceOpen<cr>",   desc = "Open workspace" },
+      { "<leader>qr", "<cmd>WorkspaceRecent<cr>", desc = "Recent" },
+    },
+  }
+<
+
+Or from Lua directly: >lua
+
+  require("multiroot").setup({})
+<
+
+==============================================================================
+4. WORKSPACE FILE                                     *multiroot-workspace-file*
+
+A workspace is a JSON file, conventionally named `.nvim-workspace.json` at the
+parent directory of your repos. When `nvim` is launched in a directory that
+contains this file, the workspace is loaded automatically.
+
+Full example: >
+
+  {
+    "name": "acme",
+    "folders": [
+      "~/projects/acme-frontend",
+      "~/projects/acme-backend"
+    ],
+    "terminals": [
+      { "name": "backend", "folder": "acme-backend",
+        "cmd": "npm run dev", "env": "dev", "autostart": true }
+    ],
+    "tasks": [
+      { "name": "build",  "folder": "acme-backend", "cmd": "make" },
+      { "name": "deploy", "cmd": "./deploy.sh",     "env": "prod" }
+    ],
+    "env": {
+      "AWS_PROFILE": "acme-dev"
+    },
+    "envs": {
+      "dev":  { "API_URL": "http://localhost:3000" },
+      "prod": { "API_URL": "https://api.acme.com" }
+    },
+    "settings": {
+      "lsp": {
+        "pyright": {
+          "settings": {
+            "python": { "pythonPath": "./venv/bin/python" }
+          }
+        }
+      }
+    }
+  }
+<
+
+------------------------------------------------------------------------------
+4.1 folders                                                  *multiroot-folders*
+
+Array of paths (absolute or with `~`). Neovim `cd`s into the first folder on
+open. All folders become LSP workspace roots.
+
+------------------------------------------------------------------------------
+4.2 terminals                                              *multiroot-terminals*
+
+Long-running processes. Each entry:
+
+  name      required. Referenced by :WorkspaceTermRun and tracked per
+            workspace — re-running focuses the existing buffer.
+  folder    basename (matched against `folders`) or absolute path. Defaults
+            to the first workspace folder.
+  cmd       shell command. Omit for a plain shell.
+  env       optional profile name from `envs`; those vars are added to the
+            spawned process.
+  position  passed to the terminal backend ("bottom", "float", etc.).
+  autostart if true, launch on workspace open (see |g:multiroot-terminal|
+            config).
+
+------------------------------------------------------------------------------
+4.3 tasks                                                      *multiroot-tasks*
+
+One-shot commands run in a fresh terminal split each time. No autostart, no
+buffer reuse. Fields match `terminals` except no `autostart`.
+
+------------------------------------------------------------------------------
+4.4 env / envs                                                  *multiroot-env*
+
+`env` is the always-on base map. Applied to |vim.env| on workspace open
+(previous values are snapshotted); restored on close.
+
+`envs` is a map of named profiles. Reference from a terminal or task via
+`"env": "<name>"`. Those vars flow only into the spawned child process —
+Neovim's own `vim.env` stays on the base. This means two terminals with
+different profiles can run at once.
+
+------------------------------------------------------------------------------
+4.5 settings.lsp                                       *multiroot-lsp-settings*
+
+Per-server config patch. Keys are LSP server names; values are merged into
+|vim.lsp.config| for that server. Attached clients are notified via
+`workspace/didChangeConfiguration`. Reverted on close.
+
+Requires Neovim 0.11+.
+
+==============================================================================
+5. COMMANDS                                                 *multiroot-commands*
+
+                                                              *:WorkspaceOpen*
+:WorkspaceOpen [file]     Open a workspace by path, or (with no arg) pick
+                          from recent workspaces.
+
+                                                             *:WorkspaceClose*
+:WorkspaceClose           Close the active workspace. Saves the session,
+                          restores env, removes LSP folders, wipes workspace
+                          buffers and terminals (see |multiroot-close|).
+
+                                                              *:WorkspaceEdit*
+:WorkspaceEdit            Open the current workspace's JSON file.
+
+                                                            *:WorkspaceCreate*
+:WorkspaceCreate {file} [folders...]
+                          Create a workspace file. Defaults to the current
+                          working directory if no folders are given.
+
+                                                         *:WorkspaceAddFolder*
+:WorkspaceAddFolder [dir] Add a folder to the active workspace and write it
+                          back to disk.
+
+                                                      *:WorkspaceRemoveFolder*
+:WorkspaceRemoveFolder {dir}
+                          Remove a folder from the active workspace.
+
+                                                              *:WorkspaceList*
+:WorkspaceList            Print the active workspace's name, file, and
+                          folders.
+
+                                                            *:WorkspaceRecent*
+:WorkspaceRecent          Pick from recent workspaces.
+
+                                                             *:WorkspaceFiles*
+:WorkspaceFiles           Fuzzy-find files across every workspace folder.
+
+                                                              *:WorkspaceGrep*
+:WorkspaceGrep            Live-grep across every workspace folder.
+
+                                                              *:WorkspaceTerm*
+:WorkspaceTerm [folder]   Open a terminal cd'd to a workspace folder. Picker
+                          if omitted (or first folder if only one).
+
+                                                           *:WorkspaceTermRun*
+:WorkspaceTermRun [name]  Launch (or focus) a named terminal declared in the
+                          workspace file. Picker if omitted.
+
+                                                          *:WorkspaceTermList*
+:WorkspaceTermList        List named terminals declared in the workspace.
+
+                                                              *:WorkspaceTask*
+:WorkspaceTask [name]     Run a task. Picker if omitted.
+
+                                                          *:WorkspaceTaskList*
+:WorkspaceTaskList        List workspace tasks.
+
+                                                       *:WorkspaceSaveSession*
+:WorkspaceSaveSession     Force save the current workspace session.
+
+                                                       *:WorkspaceLoadSession*
+:WorkspaceLoadSession     Restore the active workspace's session from disk.
+
+==============================================================================
+6. CONFIGURATION                                       *multiroot-configuration*
+
+`setup()` accepts a table merged over these defaults: >lua
+
+  require("multiroot").setup({
+    workspace_file = ".nvim-workspace.json",
+    data_dir = vim.fn.stdpath("data") .. "/multiroot",
+    auto_load = true,           -- auto-open on VimEnter in cwd
+    session = {
+      enabled = true,
+      autosave = true,          -- on VimLeavePre
+      autoload = true,          -- on WorkspaceOpen
+    },
+    lsp = {
+      enabled = true,           -- multi-root LSP + settings overrides
+    },
+    picker = "auto",            -- "snacks" | "fzf" | "auto"
+    notify = true,
+    keys_when_active = {},      -- see |multiroot-keys-when-active|
+    terminal = {
+      autostart = true,         -- run autostart terminals on open
+    },
+    on_close = {
+      wipe_buffers = true,      -- delete file buffers under ws folders
+      close_terminals = true,   -- kill named terminals for the workspace
+    },
+  })
+<
+
+                                                    *multiroot-keys-when-active*
+`keys_when_active` is a list of keymap specs registered when a workspace
+loads and removed when it closes. Each entry is `{lhs, rhs, opts...}` — the
+same shape as |vim.keymap.set()| entries. Optional `mode` (defaults to "n").
+
+Example: >lua
+
+  keys_when_active = {
+    { "<leader>qf", "<cmd>WorkspaceFiles<cr>", desc = "files" },
+    { "<C-/>",      "<cmd>WorkspaceTerm<cr>",  desc = "terminal", mode = { "n", "t" } },
+  }
+<
+
+==============================================================================
+7. LUA API                                                       *multiroot-api*
+
+>lua
+  local mr = require("multiroot")
+
+  mr.setup(opts)
+  mr.open(path)                -- open a workspace file
+  mr.close()                   -- close current workspace
+  mr.create(path, folders, name?)
+  mr.add_folder(path)
+  mr.remove_folder(path)
+  mr.current()                 -- workspace table or nil
+  mr.folders()                 -- list of active folder paths
+  mr.files()                   -- open files picker
+  mr.grep()                    -- open grep picker
+  mr.recent()                  -- open recent-workspaces picker
+  mr.terminal(folder?)         -- terminal in folder (picker if nil)
+  mr.terminal_run(name?)       -- launch/focus a named terminal
+  mr.task(name?)               -- run a task (picker if nil)
+  mr.edit()                    -- open the current workspace file
+  mr.statusline(opts?)         -- statusline string; opts = { icon, folder, bufnr }
+<
+
+==============================================================================
+8. EVENTS                                                     *multiroot-events*
+
+`User` autocmds fired on state changes:
+
+                                                        *MultirootLoaded*
+MultirootLoaded          After opening a workspace. `args.data` is the
+                         workspace table.
+
+                                                        *MultirootClosed*
+MultirootClosed          After closing a workspace. `args.data` is the
+                         workspace table that was closed.
+
+Example: >lua
+
+  vim.api.nvim_create_autocmd("User", {
+    pattern = "MultirootLoaded",
+    callback = function(args)
+      print("opened workspace:", args.data.name)
+    end,
+  })
+<
+
+==============================================================================
+9. STATUSLINE                                             *multiroot-statusline*
+
+>lua
+  -- lualine
+  sections = {
+    lualine_c = {
+      { function() return require("multiroot").statusline() end },
+    },
+  }
+<
+
+Returns `" acme:backend"` when a workspace is open, empty string otherwise.
+The folder segment is the deepest workspace folder containing the current
+buffer's file.
+
+Options: >lua
+
+  require("multiroot").statusline({
+    icon = true,     -- show the leading icon (default true)
+    folder = true,   -- append :folder segment (default true)
+    bufnr = 0,       -- resolve folder for a specific buffer
+  })
+<
+
+Also exposed: >lua
+
+  require("multiroot.statusline").name()       -- just the workspace name
+  require("multiroot.statusline").folder(buf)  -- just the folder segment
+<
+
+==============================================================================
+10. CLOSE / SWITCH BEHAVIOR                                    *multiroot-close*
+
+`:WorkspaceClose` (and opening a workspace on top of an active one) does the
+following, in order:
+
+  1. Save the workspace session (if `session.autosave` is enabled)
+  2. Kill named terminals for the workspace (`on_close.close_terminals`)
+  3. Wipe file buffers whose path is under any workspace folder
+     (`on_close.wipe_buffers`) — modified buffers are kept and counted
+  4. Revert `settings.lsp` overrides
+  5. Remove each folder from every attached LSP client
+  6. Restore env vars
+  7. Fire |MultirootClosed|
+
+Buffers outside the workspace (help, scratch, unrelated files) are untouched.
+
+==============================================================================
+11. HEALTH CHECK                                              *multiroot-health*
+
+`:checkhealth multiroot` reports:
+  - Neovim version compatibility
+  - Whether a workspace is active, and each folder's existence
+  - Which picker backend was detected (snacks / fzf-lua)
+  - Which terminal backend is in use
+  - Whether the data directory exists
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:
