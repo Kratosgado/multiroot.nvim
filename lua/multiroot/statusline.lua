@@ -7,22 +7,7 @@ M.icon = ""
 M.separator = ":"
 
 local function current_folder_of_buffer(bufnr)
-  bufnr = bufnr or 0
-  local name = vim.api.nvim_buf_get_name(bufnr)
-  if not name or name == "" then
-    return nil
-  end
-  local path = util.expand(name)
-  local best
-  for _, f in ipairs(state.folders()) do
-    local prefix = f:sub(-1) == "/" and f or f .. "/"
-    if path == f or path:sub(1, #prefix) == prefix then
-      if not best or #f > #best then
-        best = f
-      end
-    end
-  end
-  return best
+  return util.folder_for_buffer(bufnr)
 end
 
 function M.get(opts)

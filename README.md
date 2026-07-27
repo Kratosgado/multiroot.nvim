@@ -13,6 +13,7 @@ VSCode-style multi-root workspaces for Neovim. Group N folders under one workspa
 - Per-workspace LSP settings overrides
 - Statusline component
 - Clean handoff on close/switch: wipes workspace file buffers and terminals, keeps unrelated buffers
+- Git integration — `:WorkspaceGit` opens Neogit (or your custom tool) at the buffer's owning folder; optional auto-lcd on BufEnter for any cwd-based tool
 - Ships a JSON schema — auto-registered with `jsonls` for completion + validation inside `.nvim-workspace.json`
 
 > **Status:** v1. File tree with multiple roots is planned for v2 (requires a custom neo-tree source).
@@ -116,6 +117,7 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 | `:WorkspaceOpen [file]`                | Open a workspace by path, or pick from recent                 |
 | `:WorkspaceClose`                      | Close the active workspace (saves session)                    |
 | `:WorkspaceReload`                     | Re-read the current workspace file from disk                  |
+| `:WorkspaceGit`                        | Open the configured git tool at the buffer's workspace folder |
 | `:WorkspaceEdit`                       | Open the current workspace's JSON file for editing            |
 | `:WorkspaceCreate [folders...]`        | Create `.nvim-workspace.json` at cwd (defaults to cwd)         |
 | `:WorkspaceAddFolder [dir]`            | Add a folder to the active workspace                          |
@@ -163,6 +165,16 @@ require("multiroot").setup({
   schema = {
     register = true,          -- auto-register workspace.json schema with jsonls
   },
+  git = {
+    -- called by :WorkspaceGit with the buffer's owning workspace folder.
+    -- Default: opens Neogit if installed. Override for lazygit / fugitive / etc.
+    open = nil,
+  },
+  on_buf_enter = {
+    lcd = false,              -- if true, sets window-local cwd to the buffer's
+                              -- workspace folder on BufEnter. Any cwd-based
+                              -- tool (Neogit, lazygit, :!git) then Just Works.
+  },
 })
 ```
 
@@ -174,6 +186,8 @@ mr.open(path)         -- open a workspace file
 mr.close()            -- close current workspace
 mr.create(folders?, name?)   -- always writes cwd/<workspace_file>
 mr.reload()                  -- re-read the current workspace file
+mr.folder_for_buffer(bufnr?) -- absolute path of the buffer's owning folder
+mr.git(bufnr?)               -- open the configured git tool at that folder
 mr.add_folder(path)
 mr.remove_folder(path)
 mr.current()          -- current workspace table or nil
@@ -234,6 +248,24 @@ Buffers outside the workspace folders (help pages, scratch buffers, unrelated fi
 When a workspace is opened, each folder is added to every attached LSP client via `workspace/didChangeWorkspaceFolders`. For LSP clients that attach later (e.g. when you open a file in a different folder), an `LspAttach` autocmd adds the workspace folders automatically.
 
 Not every language server honors multi-root — some indexes are still cwd-scoped. For those, use `:WorkspaceFiles` / `:WorkspaceGrep` to jump between folders.
+
+## Git integration
+
+`:WorkspaceGit` opens the configured git tool at the current buffer's owning folder — solving the multi-root problem where Neogit / lazygit / fugitive would otherwise always show the workspace's primary folder regardless of which file you're editing.
+
+```lua
+opts = {
+  git = {
+    open = function(cwd)
+      require("neogit").open({ cwd = cwd })
+      -- or: Snacks.terminal.open("lazygit", { cwd = cwd })
+    end,
+  },
+}
+```
+Default falls back to Neogit when installed.
+
+For workflows where you want *any* cwd-based tool to Just Work (not just git), enable `on_buf_enter.lcd = true` — a `BufEnter` autocmd sets the window-local cwd to the buffer's workspace folder. Off by default because it also changes what `:e some/path` resolves to.
 
 ## JSON schema
 

@@ -38,6 +38,10 @@ function M.setup()
     mr.reload()
   end, { desc = "Re-read the current workspace file from disk" })
 
+  vim.api.nvim_create_user_command("WorkspaceGit", function()
+    mr.git()
+  end, { desc = "Open the configured git tool at the current buffer's workspace folder" })
+
   vim.api.nvim_create_user_command("WorkspaceAddFolder", function(args)
     mr.add_folder(args.args ~= "" and args.args or vim.fn.getcwd())
   end, { nargs = "?", complete = "dir", desc = "Add a folder to the current workspace" })

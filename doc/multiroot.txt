@@ -21,8 +21,9 @@ CONTENTS                                                    *multiroot-contents*
   8. Events ............................... |multiroot-events|
   9. Statusline ........................... |multiroot-statusline|
  10. Close / switch behavior .............. |multiroot-close|
- 11. JSON schema .......................... |multiroot-schema|
- 12. Health check ......................... |multiroot-health|
+ 11. Git integration ...................... |multiroot-git|
+ 12. JSON schema .......................... |multiroot-schema|
+ 13. Health check ......................... |multiroot-health|
 
 ==============================================================================
 1. INTRODUCTION                                         *multiroot-introduction*
@@ -197,6 +198,14 @@ Requires Neovim 0.11+.
                           re-apply state. Handy after editing the file via
                           |:WorkspaceEdit|.
 
+                                                               *:WorkspaceGit*
+:WorkspaceGit             Open the configured git tool at the current buffer's
+                          workspace folder. Defaults to Neogit when installed;
+                          override via `opts.git.open`. Useful in multi-root
+                          workspaces where the git tool would otherwise open
+                          on the workspace's primary folder regardless of the
+                          buffer you're editing.
+
                                                          *:WorkspaceAddFolder*
 :WorkspaceAddFolder [dir] Add a folder to the active workspace and write it
                           back to disk.
@@ -295,6 +304,8 @@ Example: >lua
   mr.close()                   -- close current workspace
   mr.create(folders?, name?)   -- always at cwd/<workspace_file>
   mr.reload()                  -- re-read the current workspace file
+  mr.folder_for_buffer(bufnr?) -- absolute path of the buffer's owning folder
+  mr.git(bufnr?)               -- open the configured git tool at that folder
   mr.add_folder(path)
   mr.remove_folder(path)
   mr.current()                 -- workspace table or nil
@@ -381,7 +392,44 @@ following, in order:
 Buffers outside the workspace (help, scratch, unrelated files) are untouched.
 
 ==============================================================================
-11. JSON SCHEMA                                              *multiroot-schema*
+11. GIT INTEGRATION                                             *multiroot-git*
+
+|:WorkspaceGit| opens the configured git tool at the buffer's owning workspace
+folder. This solves the multi-root case where a cwd-based tool (Neogit,
+lazygit, fugitive) would otherwise always show the workspace's primary folder
+regardless of the file you're editing.
+
+Configure the tool via `opts.git.open`: >lua
+
+  require("multiroot").setup({
+    git = {
+      open = function(cwd)
+        require("neogit").open({ cwd = cwd })
+        -- or: require("snacks").terminal.open("lazygit", { cwd = cwd })
+        -- or: vim.cmd("cd " .. vim.fn.fnameescape(cwd) .. " | Git")
+      end,
+    },
+  })
+<
+
+The default `open` calls Neogit when it's installed.
+
+For workflows where you want *every* cwd-based tool to Just Work (not just
+git), enable auto-lcd: >lua
+
+  require("multiroot").setup({
+    on_buf_enter = { lcd = true },
+  })
+<
+
+This installs a `BufEnter` autocmd that sets the window-local cwd (see |lcd|)
+to the buffer's owning workspace folder. `:!git status`, `:terminal`, and any
+plugin that reads `getcwd()` will then follow you as you switch between files
+in different folders. Off by default because it also changes what
+`:e some/path` resolves to and can surprise users who rely on a stable cwd.
+
+==============================================================================
+12. JSON SCHEMA                                              *multiroot-schema*
 
 The plugin ships a JSON schema at `schemas/workspace.json` describing every
 valid field of a workspace file. On `setup()`, it is auto-registered with
@@ -419,7 +467,7 @@ Example manual jsonls config: >lua
 <
 
 ==============================================================================
-12. HEALTH CHECK                                              *multiroot-health*
+13. HEALTH CHECK                                              *multiroot-health*
 
 `:checkhealth multiroot` reports:
   - Neovim version compatibility

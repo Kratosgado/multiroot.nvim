@@ -12,6 +12,7 @@ function M.setup(opts)
   require("multiroot.session").setup()
   require("multiroot.commands").setup()
   require("multiroot.keymap").setup()
+  require("multiroot.auto_lcd").setup()
 
   local cfg = config.get()
   if cfg.schema and cfg.schema.register then
@@ -248,6 +249,19 @@ function M.statusline(opts)
   return require("multiroot.statusline").get(opts)
 end
 
+--- Absolute path of the deepest workspace folder containing `bufnr`'s file.
+--- Falls back to the first workspace folder when the buffer is unnamed or
+--- lives outside every folder. Returns nil when no workspace is open.
+function M.folder_for_buffer(bufnr)
+  local util = require("multiroot.util")
+  local resolved = util.folder_for_buffer(bufnr)
+  if resolved then
+    return resolved
+  end
+  local folders = require("multiroot.state").folders()
+  return folders[1]
+end
+
 function M.edit()
   local state = require("multiroot.state")
   local util = require("multiroot.util")
@@ -260,6 +274,10 @@ end
 
 function M.schema_path()
   return require("multiroot.schema").path()
+end
+
+function M.git(bufnr)
+  require("multiroot.git").open(bufnr)
 end
 
 function M.reload()

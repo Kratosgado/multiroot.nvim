@@ -25,6 +25,16 @@ M.defaults = {
   schema = {
     register = true,       -- auto-register workspace.json schema with jsonls
   },
+  git = {
+    ---@type fun(cwd: string)|nil
+    open = nil,            -- called by :WorkspaceGit with the resolved folder;
+                           -- defaults to Neogit if installed
+  },
+  on_buf_enter = {
+    lcd = false,           -- when true, set window-local cwd to the buffer's
+                           -- workspace folder on BufEnter (helps cwd-based tools
+                           -- like Neogit / lazygit)
+  },
 }
 
 M.options = vim.deepcopy(M.defaults)
