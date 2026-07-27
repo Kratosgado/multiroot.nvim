@@ -70,15 +70,7 @@ function M.files()
   if picker == "snacks" then
     _G.Snacks.picker.files({ dirs = folders })
   elseif picker == "fzf" then
-    local dirs = table.concat(
-      vim.tbl_map(function(f)
-        return vim.fn.shellescape(f)
-      end, folders),
-      " "
-    )
-    require("fzf-lua").files({
-      cmd = "fd --type f --color=never --hidden --follow --exclude .git . " .. dirs,
-    })
+    require("fzf-lua").files({ search_paths = folders })
   else
     util.notify("no picker available (install snacks.nvim or fzf-lua)", vim.log.levels.ERROR)
   end
