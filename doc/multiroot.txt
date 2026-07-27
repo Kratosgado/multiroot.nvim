@@ -1,6 +1,6 @@
 *multiroot.txt*   VSCode-style multi-root workspaces for Neovim
 
-Author:  Essilfie Mbeah
+Author:  Kratosgado
 License: MIT
 
 ==============================================================================
@@ -14,7 +14,8 @@ CONTENTS                                                    *multiroot-contents*
      4.2 terminals ........................ |multiroot-terminals|
      4.3 tasks ............................ |multiroot-tasks|
      4.4 env / envs ....................... |multiroot-env|
-     4.5 settings.lsp ..................... |multiroot-lsp-settings|
+     4.5 vim_options ...................... |multiroot-vim-options|
+     4.6 settings.lsp ..................... |multiroot-lsp-settings|
   5. Commands ............................. |multiroot-commands|
   6. Configuration ........................ |multiroot-configuration|
   7. Lua API .............................. |multiroot-api|
@@ -161,7 +162,22 @@ Neovim's own `vim.env` stays on the base. This means two terminals with
 different profiles can run at once.
 
 ------------------------------------------------------------------------------
-4.5 settings.lsp                                       *multiroot-lsp-settings*
+4.5 vim_options                                          *multiroot-vim-options*
+
+Map of Neovim global options set on workspace open, restored on close.
+
+  "vim_options": {
+    "tabstop": 4,
+    "shiftwidth": 4,
+    "expandtab": true,
+    "textwidth": 100
+  }
+
+Uses `vim.o[key]`. Previous values are snapshotted before setting, and
+restored verbatim on close. Unknown option names are skipped with a warning.
+
+------------------------------------------------------------------------------
+4.6 settings.lsp                                       *multiroot-lsp-settings*
 
 Per-server config patch. Keys are LSP server names; values are merged into
 |vim.lsp.config| for that server. Attached clients are notified via
@@ -185,9 +201,17 @@ Requires Neovim 0.11+.
 :WorkspaceEdit            Open the current workspace's JSON file.
 
                                                             *:WorkspaceCreate*
-:WorkspaceCreate {file} [folders...]
-                          Create a workspace file. Defaults to the current
-                          working directory if no folders are given.
+:WorkspaceCreate [folders...]
+                          Create `.nvim-workspace.json` at the current working
+                          directory. Folders default to cwd if none given.
+                          Errors if the file already exists (use
+                          |:WorkspaceEdit|). Auto-opens the workspace on
+                          success.
+
+                                                            *:WorkspaceReload*
+:WorkspaceReload          Re-read the current workspace file from disk and
+                          re-apply state. Handy after editing the file via
+                          |:WorkspaceEdit|.
 
                                                          *:WorkspaceAddFolder*
 :WorkspaceAddFolder [dir] Add a folder to the active workspace and write it
@@ -285,7 +309,8 @@ Example: >lua
   mr.setup(opts)
   mr.open(path)                -- open a workspace file
   mr.close()                   -- close current workspace
-  mr.create(path, folders, name?)
+  mr.create(folders?, name?)   -- always at cwd/<workspace_file>
+  mr.reload()                  -- re-read the current workspace file
   mr.add_folder(path)
   mr.remove_folder(path)
   mr.current()                 -- workspace table or nil

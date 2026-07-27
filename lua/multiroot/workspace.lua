@@ -77,6 +77,14 @@ function M.read(path)
       end
     end
   end
+  local vim_options = {}
+  if type(decoded.vim_options) == "table" then
+    for k, v in pairs(decoded.vim_options) do
+      if type(k) == "string" and (type(v) == "string" or type(v) == "number" or type(v) == "boolean") then
+        vim_options[k] = v
+      end
+    end
+  end
   return {
     name = name,
     file = path,
@@ -86,6 +94,7 @@ function M.read(path)
     tasks = tasks,
     env = env,
     envs = envs,
+    vim_options = vim_options,
   }
 end
 
@@ -109,6 +118,9 @@ function M.write(path, ws)
   end
   if ws.envs and next(ws.envs) then
     payload.envs = ws.envs
+  end
+  if ws.vim_options and next(ws.vim_options) then
+    payload.vim_options = ws.vim_options
   end
   local encoded = util.encode_pretty(payload)
   if not encoded then

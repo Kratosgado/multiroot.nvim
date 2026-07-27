@@ -23,22 +23,20 @@ function M.setup()
   end, { desc = "Close the current workspace" })
 
   vim.api.nvim_create_user_command("WorkspaceCreate", function(args)
-    if #args.fargs < 1 then
-      util.notify("Usage: :WorkspaceCreate <file.json> [folder ...]", vim.log.levels.ERROR)
-      return
-    end
-    local path = args.fargs[1]
     local folders = {}
-    for i = 2, #args.fargs do
-      table.insert(folders, args.fargs[i])
+    for _, f in ipairs(args.fargs) do
+      table.insert(folders, f)
     end
-    if #folders == 0 then
-      table.insert(folders, vim.fn.getcwd())
-    end
-    if mr.create(path, folders) then
-      util.notify("created " .. path)
-    end
-  end, { nargs = "+", complete = "file", desc = "Create a workspace file" })
+    mr.create(folders)
+  end, {
+    nargs = "*",
+    complete = "dir",
+    desc = "Create .nvim-workspace.json at cwd (folders default to cwd)",
+  })
+
+  vim.api.nvim_create_user_command("WorkspaceReload", function()
+    mr.reload()
+  end, { desc = "Re-read the current workspace file from disk" })
 
   vim.api.nvim_create_user_command("WorkspaceAddFolder", function(args)
     mr.add_folder(args.args ~= "" and args.args or vim.fn.getcwd())

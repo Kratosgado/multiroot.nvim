@@ -88,6 +88,12 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     "staging": { "API_URL": "https://staging.acme.com", "NODE_ENV": "staging" },
     "prod": { "API_URL": "https://api.acme.com", "NODE_ENV": "production" }
   },
+  "vim_options": {
+    "tabstop": 4,
+    "shiftwidth": 4,
+    "expandtab": true,
+    "textwidth": 100
+  },
   "settings": {
     "lsp": {
       "lua_ls": {
@@ -107,6 +113,7 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 - **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse. Also supports `env: "profile"`.
 - **env** — always-on base env for the workspace. Set on open (previous values snapshotted), restored on close. Inherited by all terminals/tasks automatically.
 - **envs** — named profiles. Referenced per-terminal / per-task via `"env": "<name>"`. Vars flow only into that child process — Neovim's own `vim.env` stays on the base. This means you can run `backend-dev` and `backend-prod` terminals side by side in different profiles.
+- **vim_options** — Neovim global options (`tabstop`, `shiftwidth`, `expandtab`, `textwidth`, …) applied via `vim.o` on open, snapshot restored on close.
 - **settings.lsp** — per-server config patch merged into `vim.lsp.config`; attached clients are notified via `workspace/didChangeConfiguration`. Reverted on close. Requires Neovim 0.11+.
 
 ## Commands
@@ -115,8 +122,9 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 | -------------------------------------- | ------------------------------------------------------------- |
 | `:WorkspaceOpen [file]`                | Open a workspace by path, or pick from recent                 |
 | `:WorkspaceClose`                      | Close the active workspace (saves session)                    |
+| `:WorkspaceReload`                     | Re-read the current workspace file from disk                  |
 | `:WorkspaceEdit`                       | Open the current workspace's JSON file for editing            |
-| `:WorkspaceCreate <file> [folders...]` | Create a workspace file (defaults to cwd if no folders given) |
+| `:WorkspaceCreate [folders...]`        | Create `.nvim-workspace.json` at cwd (defaults to cwd)         |
 | `:WorkspaceAddFolder [dir]`            | Add a folder to the active workspace                          |
 | `:WorkspaceRemoveFolder <dir>`         | Remove a folder from the active workspace                     |
 | `:WorkspaceList`                       | Print the active workspace                                    |
@@ -171,7 +179,8 @@ require("multiroot").setup({
 local mr = require("multiroot")
 mr.open(path)         -- open a workspace file
 mr.close()            -- close current workspace
-mr.create(path, folders, name?)
+mr.create(folders?, name?)   -- always writes cwd/<workspace_file>
+mr.reload()                  -- re-read the current workspace file
 mr.add_folder(path)
 mr.remove_folder(path)
 mr.current()          -- current workspace table or nil

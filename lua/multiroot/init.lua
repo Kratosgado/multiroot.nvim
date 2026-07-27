@@ -67,6 +67,7 @@ function M.open(path)
     vim.api.nvim_set_current_dir(primary)
   end
   require("multiroot.env").apply()
+  require("multiroot.vim_options").apply()
   if config.lsp.enabled then
     lsp.sync_all()
     require("multiroot.lsp_settings").apply()
@@ -109,6 +110,7 @@ function M.close(opts)
     require("multiroot.lsp_settings").restore()
     lsp.remove_all(folders)
   end
+  require("multiroot.vim_options").restore()
   require("multiroot.env").restore()
   state.clear()
   emit("MultirootClosed", ws)
@@ -126,15 +128,24 @@ function M.close(opts)
   return true
 end
 
-function M.create(path, folders, name)
+function M.create(folders, name)
   local workspace = require("multiroot.workspace")
   local util = require("multiroot.util")
+  local config = require("multiroot.config").get()
+  local path = vim.fn.getcwd() .. "/" .. config.workspace_file
+  if util.exists(path) then
+    util.notify(config.workspace_file .. " already exists (use :WorkspaceEdit)", vim.log.levels.ERROR)
+    return false
+  end
   local abs = {}
-  for _, f in ipairs(folders) do
+  for _, f in ipairs(folders or {}) do
     table.insert(abs, util.expand(f))
   end
+  if #abs == 0 then
+    table.insert(abs, util.expand(vim.fn.getcwd()))
+  end
   local ws = {
-    name = name or vim.fn.fnamemodify(util.expand(path), ":t:r"),
+    name = name or vim.fn.fnamemodify(vim.fn.getcwd(), ":t"),
     folders = abs,
   }
   local ok, err = workspace.write(path, ws)
@@ -142,6 +153,7 @@ function M.create(path, folders, name)
     util.notify(err or "failed to write workspace", vim.log.levels.ERROR)
     return false
   end
+  M.open(path)
   return true
 end
 
@@ -250,6 +262,18 @@ end
 
 function M.schema_path()
   return require("multiroot.schema").path()
+end
+
+function M.reload()
+  local state = require("multiroot.state")
+  local util = require("multiroot.util")
+  if not state.is_active() then
+    util.notify("no workspace open", vim.log.levels.WARN)
+    return false
+  end
+  local path = state.current.file
+  M.close({ silent = true })
+  return M.open(path)
 end
 
 return M
