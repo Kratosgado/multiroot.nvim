@@ -77,6 +77,17 @@ function M.read(path)
       end
     end
   end
+  local keymaps = {}
+  for _, k in ipairs(decoded.keymaps or {}) do
+    if type(k) == "table" and type(k.lhs) == "string" and type(k.rhs) == "string" then
+      table.insert(keymaps, {
+        lhs = k.lhs,
+        rhs = k.rhs,
+        mode = k.mode,
+        desc = type(k.desc) == "string" and k.desc or nil,
+      })
+    end
+  end
   return {
     name = name,
     file = path,
@@ -86,6 +97,7 @@ function M.read(path)
     tasks = tasks,
     env = env,
     envs = envs,
+    keymaps = keymaps,
   }
 end
 
@@ -109,6 +121,9 @@ function M.write(path, ws)
   end
   if ws.envs and next(ws.envs) then
     payload.envs = ws.envs
+  end
+  if ws.keymaps and #ws.keymaps > 0 then
+    payload.keymaps = ws.keymaps
   end
   local encoded = util.encode_pretty(payload)
   if not encoded then

@@ -108,31 +108,32 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 - **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse. Also supports `env: "profile"`.
 - **env** — always-on base env for the workspace. Set on open (previous values snapshotted), restored on close. Inherited by all terminals/tasks automatically.
 - **envs** — named profiles. Referenced per-terminal / per-task via `"env": "<name>"`. Vars flow only into that child process — Neovim's own `vim.env` stays on the base. This means you can run `backend-dev` and `backend-prod` terminals side by side in different profiles.
+- **keymaps** — team-shared keymaps applied on open, removed on close. `[{lhs, rhs, mode?, desc?}]`. Same trust model as `:h exrc` since `rhs` can be any Ex command — disable via `opts.workspace_keymaps.enabled = false`.
 - **settings.lsp** — per-server config patch merged into `vim.lsp.config`; attached clients are notified via `workspace/didChangeConfiguration`. Reverted on close. Requires Neovim 0.11+.
 
 ## Commands
 
-| Command                                | Description                                                   |
-| -------------------------------------- | ------------------------------------------------------------- |
-| `:WorkspaceOpen [file]`                | Open a workspace by path, or pick from recent                 |
-| `:WorkspaceClose`                      | Close the active workspace (saves session)                    |
-| `:WorkspaceReload`                     | Re-read the current workspace file from disk                  |
-| `:WorkspaceGit`                        | Open the configured git tool at the buffer's workspace folder |
-| `:WorkspaceEdit`                       | Open the current workspace's JSON file for editing            |
-| `:WorkspaceCreate [folders...]`        | Create `.nvim-workspace.json` at cwd (defaults to cwd)         |
-| `:WorkspaceAddFolder [dir]`            | Add a folder to the active workspace                          |
-| `:WorkspaceRemoveFolder <dir>`         | Remove a folder from the active workspace                     |
-| `:WorkspaceList`                       | Print the active workspace                                    |
-| `:WorkspaceRecent`                     | Pick from recent workspaces                                   |
-| `:WorkspaceFiles`                      | Fuzzy-find files across all folders                           |
-| `:WorkspaceGrep`                       | Live-grep across all folders                                  |
-| `:WorkspaceTerm [folder]`              | Open a terminal in a workspace folder (picker if omitted)     |
-| `:WorkspaceTermRun [name]`             | Launch (or focus) a named terminal from the workspace file    |
-| `:WorkspaceTermList`                   | List named terminals declared in the workspace                |
-| `:WorkspaceTask [name]`                | Run a task (picker if omitted)                                |
-| `:WorkspaceTaskList`                   | List workspace tasks                                          |
-| `:WorkspaceSaveSession`                | Force save the current session                                |
-| `:WorkspaceLoadSession`                | Restore the active workspace's session                        |
+| Command                         | Description                                                   |
+| ------------------------------- | ------------------------------------------------------------- |
+| `:WorkspaceOpen [file]`         | Open a workspace by path, or pick from recent                 |
+| `:WorkspaceClose`               | Close the active workspace (saves session)                    |
+| `:WorkspaceReload`              | Re-read the current workspace file from disk                  |
+| `:WorkspaceGit`                 | Open the configured git tool at the buffer's workspace folder |
+| `:WorkspaceEdit`                | Open the current workspace's JSON file for editing            |
+| `:WorkspaceCreate [folders...]` | Create `.nvim-workspace.json` at cwd (defaults to cwd)        |
+| `:WorkspaceAddFolder [dir]`     | Add a folder to the active workspace                          |
+| `:WorkspaceRemoveFolder <dir>`  | Remove a folder from the active workspace                     |
+| `:WorkspaceList`                | Print the active workspace                                    |
+| `:WorkspaceRecent`              | Pick from recent workspaces                                   |
+| `:WorkspaceFiles`               | Fuzzy-find files across all folders                           |
+| `:WorkspaceGrep`                | Live-grep across all folders                                  |
+| `:WorkspaceTerm [folder]`       | Open a terminal in a workspace folder (picker if omitted)     |
+| `:WorkspaceTermRun [name]`      | Launch (or focus) a named terminal from the workspace file    |
+| `:WorkspaceTermList`            | List named terminals declared in the workspace                |
+| `:WorkspaceTask [name]`         | Run a task (picker if omitted)                                |
+| `:WorkspaceTaskList`            | List workspace tasks                                          |
+| `:WorkspaceSaveSession`         | Force save the current session                                |
+| `:WorkspaceLoadSession`         | Restore the active workspace's session                        |
 
 ## Configuration
 
@@ -170,6 +171,10 @@ require("multiroot").setup({
     -- Default: opens Neogit if installed. Override for lazygit / fugitive / etc.
     open = nil,
   },
+  workspace_keymaps = {
+    enabled = true,           -- respect the 'keymaps' field in workspace JSON
+                              -- (same trust model as :h exrc)
+  },
   on_buf_enter = {
     lcd = false,              -- if true, sets window-local cwd to the buffer's
                               -- workspace folder on BufEnter. Any cwd-based
@@ -206,14 +211,41 @@ mr.statusline(opts?)  -- string for lualine/heirline/etc. opts: { icon = true, f
 
 ```lua
 -- lualine
-sections = {
-  lualine_c = {
-    { function() return require("multiroot").statusline() end },
+  -- statusline: show current workspace in lualine
+  {
+    "nvim-lualine/lualine.nvim",
+    optional = true,
+    opts = function(_, opts)
+      opts.sections = opts.sections or {}
+      opts.sections.lualine_c = opts.sections.lualine_c or {}
+      table.insert(opts.sections.lualine_c, {
+        function()
+          return require("multiroot").statusline()
+        end,
+        cond = function()
+          local ok, mr = pcall(require, "multiroot")
+          return ok and mr.current() ~= nil
+        end,
+      })
+    end,
   },
-}
 ```
 
 Returns `" acme:backend"` when a workspace is open (folder segment reflects the current buffer's owning folder), empty string otherwise. Also exposed: `require("multiroot.statusline").name()` and `.folder(bufnr)` for finer control.
+
+### WhichKey group
+
+```lua
+{
+    "folke/which-key.nvim",
+    optional = true,
+    opts = {
+      spec = {
+        { "<leader>m", group = "workspace", icon = "" },
+      },
+    },
+  },
+```
 
 ## Events
 
@@ -263,9 +295,10 @@ opts = {
   },
 }
 ```
+
 Default falls back to Neogit when installed.
 
-For workflows where you want *any* cwd-based tool to Just Work (not just git), enable `on_buf_enter.lcd = true` — a `BufEnter` autocmd sets the window-local cwd to the buffer's workspace folder. Off by default because it also changes what `:e some/path` resolves to.
+For workflows where you want _any_ cwd-based tool to Just Work (not just git), enable `on_buf_enter.lcd = true` — a `BufEnter` autocmd sets the window-local cwd to the buffer's workspace folder. Off by default because it also changes what `:e some/path` resolves to.
 
 ## JSON schema
 

@@ -35,6 +35,11 @@ M.defaults = {
                            -- workspace folder on BufEnter (helps cwd-based tools
                            -- like Neogit / lazygit)
   },
+  workspace_keymaps = {
+    enabled = true,        -- honor the 'keymaps' field in the workspace JSON
+                           -- (executes arbitrary Ex commands; same trust model
+                           -- as :h exrc — disable if you open untrusted files)
+  },
 }
 
 M.options = vim.deepcopy(M.defaults)
