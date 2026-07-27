@@ -13,6 +13,18 @@ local function has_fzf()
   return pcall(require, "fzf-lua")
 end
 
+--- Which picker LazyVim registered ("snacks", "fzf", "telescope", or nil).
+--- This is the source of truth in LazyVim setups regardless of what else is loaded.
+local function lazyvim_picker_name()
+  local ok, name = pcall(function()
+    return _G.LazyVim
+      and _G.LazyVim.pick
+      and _G.LazyVim.pick.picker
+      and _G.LazyVim.pick.picker.name
+  end)
+  return ok and name or nil
+end
+
 local function detect()
   local pref = config.get().picker
   if pref == "snacks" then
@@ -21,11 +33,18 @@ local function detect()
   if pref == "fzf" then
     return has_fzf() and "fzf" or nil
   end
-  if has_snacks() then
+  local lv = lazyvim_picker_name()
+  if lv == "snacks" and has_snacks() then
     return "snacks"
+  end
+  if lv == "fzf" and has_fzf() then
+    return "fzf"
   end
   if has_fzf() then
     return "fzf"
+  end
+  if has_snacks() then
+    return "snacks"
   end
   return nil
 end
@@ -51,12 +70,15 @@ function M.files()
   if picker == "snacks" then
     _G.Snacks.picker.files({ dirs = folders })
   elseif picker == "fzf" then
-    require("fzf-lua").files({ cmd = "fd --type f --hidden --follow --exclude .git . " .. table.concat(
+    local dirs = table.concat(
       vim.tbl_map(function(f)
         return vim.fn.shellescape(f)
       end, folders),
       " "
-    ) })
+    )
+    require("fzf-lua").files({
+      cmd = "fd --type f --color=never --hidden --follow --exclude .git . " .. dirs,
+    })
   else
     util.notify("no picker available (install snacks.nvim or fzf-lua)", vim.log.levels.ERROR)
   end
