@@ -88,12 +88,6 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     "staging": { "API_URL": "https://staging.acme.com", "NODE_ENV": "staging" },
     "prod": { "API_URL": "https://api.acme.com", "NODE_ENV": "production" }
   },
-  "vim_options": {
-    "tabstop": 4,
-    "shiftwidth": 4,
-    "expandtab": true,
-    "textwidth": 100
-  },
   "settings": {
     "lsp": {
       "lua_ls": {
@@ -113,7 +107,6 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 - **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse. Also supports `env: "profile"`.
 - **env** — always-on base env for the workspace. Set on open (previous values snapshotted), restored on close. Inherited by all terminals/tasks automatically.
 - **envs** — named profiles. Referenced per-terminal / per-task via `"env": "<name>"`. Vars flow only into that child process — Neovim's own `vim.env` stays on the base. This means you can run `backend-dev` and `backend-prod` terminals side by side in different profiles.
-- **vim_options** — Neovim global options (`tabstop`, `shiftwidth`, `expandtab`, `textwidth`, …) applied via `vim.o` on open, snapshot restored on close.
 - **settings.lsp** — per-server config patch merged into `vim.lsp.config`; attached clients are notified via `workspace/didChangeConfiguration`. Reverted on close. Requires Neovim 0.11+.
 
 ## Commands

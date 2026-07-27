@@ -67,7 +67,6 @@ function M.open(path)
     vim.api.nvim_set_current_dir(primary)
   end
   require("multiroot.env").apply()
-  require("multiroot.vim_options").apply()
   if config.lsp.enabled then
     lsp.sync_all()
     require("multiroot.lsp_settings").apply()
@@ -110,7 +109,6 @@ function M.close(opts)
     require("multiroot.lsp_settings").restore()
     lsp.remove_all(folders)
   end
-  require("multiroot.vim_options").restore()
   require("multiroot.env").restore()
   state.clear()
   emit("MultirootClosed", ws)

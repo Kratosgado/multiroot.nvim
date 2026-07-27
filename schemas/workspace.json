@@ -115,13 +115,6 @@
         }
       }
     },
-    "vim_options": {
-      "type": "object",
-      "description": "Neovim global options set on workspace open and restored on close. Keys are option names (e.g. tabstop, shiftwidth, expandtab, textwidth). Values may be string, number, or boolean.",
-      "additionalProperties": {
-        "type": ["string", "number", "boolean"]
-      }
-    },
     "settings": {
       "type": "object",
       "description": "Per-workspace settings.",
