@@ -108,6 +108,7 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 - **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse. Also supports `env: "profile"`.
 - **env** — always-on base env for the workspace. Set on open (previous values snapshotted), restored on close. Inherited by all terminals/tasks automatically.
 - **envs** — named profiles. Referenced per-terminal / per-task via `"env": "<name>"`. Vars flow only into that child process — Neovim's own `vim.env` stays on the base. This means you can run `backend-dev` and `backend-prod` terminals side by side in different profiles.
+- **keymaps** — team-shared keymaps applied on open, removed on close. `[{lhs, rhs, mode?, desc?}]`. Same trust model as `:h exrc` since `rhs` can be any Ex command — disable via `opts.workspace_keymaps.enabled = false`.
 - **settings.lsp** — per-server config patch merged into `vim.lsp.config`; attached clients are notified via `workspace/didChangeConfiguration`. Reverted on close. Requires Neovim 0.11+.
 
 ## Commands
@@ -169,6 +170,10 @@ require("multiroot").setup({
     -- called by :WorkspaceGit with the buffer's owning workspace folder.
     -- Default: opens Neogit if installed. Override for lazygit / fugitive / etc.
     open = nil,
+  },
+  workspace_keymaps = {
+    enabled = true,           -- respect the 'keymaps' field in workspace JSON
+                              -- (same trust model as :h exrc)
   },
   on_buf_enter = {
     lcd = false,              -- if true, sets window-local cwd to the buffer's

@@ -32,11 +32,25 @@ end
 
 function M.apply()
   M.clear()
+  local state = require("multiroot.state")
+
   for _, spec in ipairs(config.get().keys_when_active or {}) do
     local km = normalize(spec)
     if km then
       pcall(vim.keymap.set, km.mode, km.lhs, km.rhs, km.opts)
       table.insert(active, { mode = km.mode, lhs = km.lhs })
+    end
+  end
+
+  local ws_cfg = config.get().workspace_keymaps or {}
+  if ws_cfg.enabled ~= false and state.is_active() then
+    for _, spec in ipairs(state.current.keymaps or {}) do
+      local km = normalize(spec)
+      if km then
+        km.opts.desc = km.opts.desc or ("Workspace: " .. km.lhs)
+        pcall(vim.keymap.set, km.mode, km.lhs, km.rhs, km.opts)
+        table.insert(active, { mode = km.mode, lhs = km.lhs })
+      end
     end
   end
 end

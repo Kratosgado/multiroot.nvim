@@ -14,7 +14,8 @@ CONTENTS                                                    *multiroot-contents*
      4.2 terminals ........................ |multiroot-terminals|
      4.3 tasks ............................ |multiroot-tasks|
      4.4 env / envs ....................... |multiroot-env|
-     4.5 settings.lsp ..................... |multiroot-lsp-settings|
+     4.5 keymaps .......................... |multiroot-keymaps|
+     4.6 settings.lsp ..................... |multiroot-lsp-settings|
   5. Commands ............................. |multiroot-commands|
   6. Configuration ........................ |multiroot-configuration|
   7. Lua API .............................. |multiroot-api|
@@ -162,7 +163,36 @@ Neovim's own `vim.env` stays on the base. This means two terminals with
 different profiles can run at once.
 
 ------------------------------------------------------------------------------
-4.5 settings.lsp                                       *multiroot-lsp-settings*
+4.5 keymaps                                                  *multiroot-keymaps*
+
+List of workspace-scoped keymaps registered on open, removed on close.
+
+  "keymaps": [
+    { "lhs": "<leader>rt", "rhs": "<cmd>Make test<cr>", "desc": "run tests" },
+    { "lhs": "<leader>rd", "rhs": ":lua vim.print('deploy')<cr>", "mode": "n" }
+  ]
+
+Fields:
+
+  lhs   required. Key sequence to bind.
+  rhs   required. Ex command / key sequence. Same syntax as |vim.keymap.set|.
+  mode  optional. String or list of modes. Defaults to "n".
+  desc  optional. Description shown in which-key / |:map|.
+
+These are stored in the shared workspace file, so team members get the same
+project-specific bindings. Because `rhs` can be any Ex command, this has the
+same trust model as |:h exrc|. Disable via: >lua
+
+  require("multiroot").setup({
+    workspace_keymaps = { enabled = false },
+  })
+<
+
+Separate from `keys_when_active` in setup opts — that lives in your personal
+config; this lives in the shared JSON.
+
+------------------------------------------------------------------------------
+4.6 settings.lsp                                       *multiroot-lsp-settings*
 
 Per-server config patch. Keys are LSP server names; values are merged into
 |vim.lsp.config| for that server. Attached clients are notified via

@@ -115,6 +115,38 @@
         }
       }
     },
+    "keymaps": {
+      "type": "array",
+      "description": "Workspace-specific keymaps. Registered on open, removed on close. Executes arbitrary Ex commands — same trust model as :h exrc. Disable via opts.workspace_keymaps.enabled = false.",
+      "items": {
+        "type": "object",
+        "required": ["lhs", "rhs"],
+        "additionalProperties": false,
+        "properties": {
+          "lhs": {
+            "type": "string",
+            "description": "Key sequence (e.g. \"<leader>rt\").",
+            "minLength": 1
+          },
+          "rhs": {
+            "type": "string",
+            "description": "Right-hand side: either a key sequence or a command like \"<cmd>Make test<cr>\".",
+            "minLength": 1
+          },
+          "mode": {
+            "description": "Mode(s) to bind in. Defaults to \"n\".",
+            "oneOf": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" } }
+            ]
+          },
+          "desc": {
+            "type": "string",
+            "description": "Description shown in which-key / :map."
+          }
+        }
+      }
+    },
     "settings": {
       "type": "object",
       "description": "Per-workspace settings.",
