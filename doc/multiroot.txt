@@ -288,7 +288,7 @@ Requires Neovim 0.11+.
   require("multiroot").setup({
     workspace_file = ".nvim-workspace.json",
     data_dir = vim.fn.stdpath("data") .. "/multiroot",
-    auto_load = true,           -- auto-open on VimEnter in cwd
+    auto_load = false,           -- auto-open on VimEnter in cwd
     session = {
       enabled = true,
       autosave = true,          -- on VimLeavePre

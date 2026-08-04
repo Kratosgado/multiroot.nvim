@@ -141,7 +141,7 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 require("multiroot").setup({
   workspace_file = ".nvim-workspace.json", -- filename auto-detected in cwd
   data_dir = vim.fn.stdpath("data") .. "/multiroot",
-  auto_load = true,           -- auto-open when cwd contains workspace_file
+  auto_load = false,           -- auto-open when cwd contains workspace_file
   session = {
     enabled = true,
     autosave = true,          -- save on VimLeavePre
