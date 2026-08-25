@@ -9,6 +9,8 @@ VSCode-style multi-root workspaces for Neovim. Group N folders under one workspa
 - Auto-load a workspace when `nvim` is launched inside a folder with a `.nvim-workspace.json`
 - Folder-scoped and named terminals declared in the workspace file
 - One-shot tasks (build, test, deploy...) picked from the workspace file
+- Task stacks — run a named group of tasks in one shot, arranged as tabs, columns, or a grid
+- Per-project Vim commands declared in the workspace file, registered on open and removed on close
 - Per-workspace env vars (auto-applied, auto-restored on close)
 - Per-workspace LSP settings overrides
 - Statusline component
@@ -76,9 +78,39 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     { "name": "shell", "folder": "acme-shared" }
   ],
   "tasks": [
-    { "name": "build", "folder": "acme-backend", "cmd": "make" },
-    { "name": "test", "folder": "acme-backend", "cmd": "pytest -q" },
-    { "name": "deploy-prod", "cmd": "./scripts/deploy.sh", "env": "prod" }
+    { "name": "build",       "folder": "acme-backend", "cmd": "make",                "description": "Compile the backend" },
+    { "name": "test",        "folder": "acme-backend", "cmd": "pytest -q",           "description": "Run unit tests" },
+    { "name": "deploy-prod", "cmd": "./scripts/deploy.sh", "env": "prod",            "description": "Deploy to production" }
+  ],
+  "stacks": [
+    {
+      "name": "dev",
+      "description": "Start backend + frontend side-by-side",
+      "tasks": ["backend-dev", "frontend-dev"],
+      "layout": "columns"
+    },
+    {
+      "name": "ci",
+      "description": "Run build and tests in separate tabs",
+      "tasks": ["build", "test"],
+      "layout": "tabs"
+    },
+    {
+      "name": "full",
+      "description": "All services in a 2-column grid",
+      "tasks": ["backend-dev", "frontend-dev", "worker", "proxy"],
+      "layout": "grid"
+    }
+  ],
+  "commands": [
+    { "name": "AcmeDeploy", "action": "task:deploy-prod", "desc": "Deploy acme to production" },
+    { "name": "AcmeDev",    "action": "stack:dev",        "desc": "Start the dev stack" },
+    { "name": "AcmeHello",  "action": "lua:vim.notify('hello from acme!')", "desc": "Say hello" }
+  ],
+  "keymaps": [
+    { "lhs": "<leader>ad", "rhs": ":WorkspaceTask deploy-prod<CR>", "mode": "n", "desc": "Acme: deploy" },
+    { "lhs": "<leader>as", "rhs": ":WorkspaceStack dev<CR>",        "mode": "n", "desc": "Acme: dev stack" },
+    { "lhs": "<leader>ab", "rhs": ":WorkspaceTask build<CR>",       "mode": "n", "desc": "Acme: build" }
   ],
   "env": {
     "AWS_PROFILE": "acme-dev",
@@ -105,10 +137,18 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 `folder` may be the folder's basename (matched against the workspace `folders` list) or an absolute path. Paths can be absolute or use `~`. When a workspace is opened, Neovim `cd`s into the first folder.
 
 - **terminals** — long-running processes; reopening a named terminal focuses the existing buffer. `autostart: true` launches on open. Omit `cmd` for a plain shell. `env: "profile"` layers a named profile onto the spawned process.
-- **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse. Also supports `env: "profile"`.
+- **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse. Optional `description` is shown in the picker instead of the raw `cmd`. Also supports `env: "profile"`.
+- **stacks** — named groups of tasks launched together. `tasks` is an ordered list of task names defined in the same file. `layout` controls how the terminals are arranged:
+  - `"tabs"` (default) — one tab per task, navigate with `gt` / `gT`
+  - `"columns"` — all tasks side-by-side in one tab
+  - `"grid"` — tasks in pairs per tab (two columns, one "page" per row); e.g. 6 tasks → 3 tabs of `[t1|t2]`, `[t3|t4]`, `[t5|t6]`
+- **commands** — per-project Ex commands registered on open, deleted on close. Each entry needs a `name` (the command, e.g. `"AcmeDeploy"`) and an `action` string:
+  - `"task:<name>"` — runs a task from this workspace
+  - `"stack:<name>"` — runs a stack from this workspace
+  - `"lua:<code>"` — evaluates arbitrary Lua
+- **keymaps** — per-project key mappings applied on open, removed on close. `[{lhs, rhs, mode?, desc?}]`. `rhs` can be any Ex command or `<Plug>` mapping — use this to bind tasks and stacks to keys without consuming global keymap slots. Same trust model as `:h exrc` — disable via `opts.workspace_keymaps.enabled = false`.
 - **env** — always-on base env for the workspace. Set on open (previous values snapshotted), restored on close. Inherited by all terminals/tasks automatically.
 - **envs** — named profiles. Referenced per-terminal / per-task via `"env": "<name>"`. Vars flow only into that child process — Neovim's own `vim.env` stays on the base. This means you can run `backend-dev` and `backend-prod` terminals side by side in different profiles.
-- **keymaps** — team-shared keymaps applied on open, removed on close. `[{lhs, rhs, mode?, desc?}]`. Same trust model as `:h exrc` since `rhs` can be any Ex command — disable via `opts.workspace_keymaps.enabled = false`.
 - **settings.lsp** — per-server config patch merged into `vim.lsp.config`; attached clients are notified via `workspace/didChangeConfiguration`. Reverted on close. Requires Neovim 0.11+.
 
 ## Commands
@@ -132,6 +172,8 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 | `:WorkspaceTermList`            | List named terminals declared in the workspace                |
 | `:WorkspaceTask [name]`         | Run a task (picker if omitted)                                |
 | `:WorkspaceTaskList`            | List workspace tasks                                          |
+| `:WorkspaceStack [name]`        | Run a stack (picker if omitted)                               |
+| `:WorkspaceStackList`           | List workspace stacks                                         |
 | `:WorkspaceSaveSession`         | Force save the current session                                |
 | `:WorkspaceLoadSession`         | Restore the active workspace's session                        |
 
@@ -203,6 +245,7 @@ mr.recent()           -- open recent-workspaces picker
 mr.terminal(folder?)  -- open terminal in folder (picker if nil)
 mr.terminal_run(name?)-- launch/focus a named terminal (picker if nil)
 mr.task(name?)        -- run a task (picker if nil)
+mr.stack(name?)       -- run a stack (picker if nil)
 mr.edit()             -- open the current workspace file for editing
 mr.statusline(opts?)  -- string for lualine/heirline/etc. opts: { icon = true, folder = true, bufnr = 0 }
 ```

@@ -13,9 +13,11 @@ CONTENTS                                                    *multiroot-contents*
      4.1 folders .......................... |multiroot-folders|
      4.2 terminals ........................ |multiroot-terminals|
      4.3 tasks ............................ |multiroot-tasks|
-     4.4 env / envs ....................... |multiroot-env|
-     4.5 keymaps .......................... |multiroot-keymaps|
-     4.6 settings.lsp ..................... |multiroot-lsp-settings|
+     4.4 stacks ........................... |multiroot-stacks|
+     4.5 commands ......................... |multiroot-project-commands|
+     4.6 keymaps .......................... |multiroot-keymaps|
+     4.7 env / envs ....................... |multiroot-env|
+     4.8 settings.lsp ..................... |multiroot-lsp-settings|
   5. Commands ............................. |multiroot-commands|
   6. Configuration ........................ |multiroot-configuration|
   7. Lua API .............................. |multiroot-api|
@@ -36,6 +38,10 @@ a JSON file. Once a workspace is loaded:
   - fuzzy-find and live-grep span every folder
   - long-running terminals (dev servers, watchers) and one-shot tasks (build,
     test, deploy) are declared in the workspace file
+  - task stacks launch a named group of tasks in one shot, arranged as tabs,
+    columns, or a grid
+  - per-project Ex commands and keymaps declared in the workspace file,
+    registered on open and removed on close
   - env vars are set on open, restored on close
   - named env profiles can be layered onto individual terminals/tasks
   - sessions save/restore per workspace
@@ -101,8 +107,28 @@ Full example: >
         "cmd": "npm run dev", "env": "dev", "autostart": true }
     ],
     "tasks": [
-      { "name": "build",  "folder": "acme-backend", "cmd": "make" },
-      { "name": "deploy", "cmd": "./deploy.sh",     "env": "prod" }
+      { "name": "build",  "folder": "acme-backend", "cmd": "make",
+        "description": "Compile the backend" },
+      { "name": "test",   "folder": "acme-backend", "cmd": "pytest -q",
+        "description": "Run unit tests" },
+      { "name": "deploy", "cmd": "./deploy.sh",     "env": "prod",
+        "description": "Deploy to production" }
+    ],
+    "stacks": [
+      { "name": "dev", "description": "Backend + frontend side-by-side",
+        "tasks": ["backend", "build"], "layout": "columns" },
+      { "name": "ci",  "tasks": ["build", "test"], "layout": "tabs" }
+    ],
+    "commands": [
+      { "name": "AcmeDeploy", "action": "task:deploy", "desc": "Deploy acme" },
+      { "name": "AcmeDev",    "action": "stack:dev",   "desc": "Start dev stack" },
+      { "name": "AcmeGreet",  "action": "lua:vim.notify('hello from acme!')" }
+    ],
+    "keymaps": [
+      { "lhs": "<leader>ad", "rhs": ":WorkspaceTask deploy<CR>", "mode": "n",
+        "desc": "Acme: deploy" },
+      { "lhs": "<leader>as", "rhs": ":WorkspaceStack dev<CR>",   "mode": "n",
+        "desc": "Acme: dev stack" }
     ],
     "env": {
       "AWS_PROFILE": "acme-dev"
@@ -149,10 +175,88 @@ Long-running processes. Each entry:
 4.3 tasks                                                      *multiroot-tasks*
 
 One-shot commands run in a fresh terminal split each time. No autostart, no
-buffer reuse. Fields match `terminals` except no `autostart`.
+buffer reuse. Fields match `terminals` except no `autostart`, plus:
+
+  description  optional. Shown in the |:WorkspaceTask| picker instead of the
+               raw `cmd`, so the picker stays readable with long commands.
 
 ------------------------------------------------------------------------------
-4.4 env / envs                                                  *multiroot-env*
+4.4 stacks                                                    *multiroot-stacks*
+
+A stack is a named group of tasks launched together in one shot. Fields:
+
+  name         required.
+  tasks        required. Ordered list of task names defined in this file.
+  layout       how to arrange the terminal windows:
+               "tabs"    (default) one tab per task; navigate with gt / gT
+               "columns" all tasks side-by-side in one tab
+               "grid"    tasks in pairs per tab (two columns per page);
+                         e.g. 6 tasks → 3 tabs of [t1|t2], [t3|t4], [t5|t6]
+  description  optional. Shown in the |:WorkspaceStack| picker.
+
+Run a stack interactively: |:WorkspaceStack| (picker if no arg).
+Run from Lua: `require("multiroot").stack(name?)`.
+
+------------------------------------------------------------------------------
+4.5 commands                                          *multiroot-project-commands*
+
+Per-project Ex commands registered when the workspace opens and deleted when
+it closes. Each entry:
+
+  name    required. The Ex command name (e.g. `"AcmeDeploy"`). Must follow
+          the usual user-command naming rules (see |:command|).
+  action  required. One of:
+          "task:<name>"   run the named task from this workspace
+          "stack:<name>"  run the named stack from this workspace
+          "lua:<code>"    evaluate arbitrary Lua (e.g. "lua:vim.notify('hi')")
+  desc    optional. Description shown by |:command| and which-key.
+
+Commands are registered on |MultirootLoaded| and deleted on |MultirootClosed|.
+If the same command name is already registered, registration is silently
+skipped for that entry.
+
+Because `lua:` can run arbitrary code, this has the same trust model as
+|:h exrc|.
+
+------------------------------------------------------------------------------
+4.6 keymaps                                                  *multiroot-keymaps*
+
+List of workspace-scoped keymaps registered on open, removed on close.
+
+  "keymaps": [
+    { "lhs": "<leader>rt", "rhs": "<cmd>WorkspaceTask test<cr>",   "desc": "run tests" },
+    { "lhs": "<leader>rd", "rhs": "<cmd>WorkspaceTask deploy<cr>", "mode": "n",
+      "desc": "deploy" },
+    { "lhs": "<leader>rs", "rhs": "<cmd>WorkspaceStack dev<cr>",   "mode": "n",
+      "desc": "dev stack" }
+  ]
+
+Fields:
+
+  lhs   required. Key sequence to bind.
+  rhs   required. Ex command / key sequence. Same syntax as |vim.keymap.set|.
+  mode  optional. String or list of modes. Defaults to "n".
+  desc  optional. Description shown in which-key / |:map|.
+
+Keymaps are registered on |MultirootLoaded| and removed on |MultirootClosed|.
+These live in the shared workspace file, so all team members get the same
+project-specific bindings. Because `rhs` can be any Ex command, this has the
+same trust model as |:h exrc|. Disable via: >lua
+
+  require("multiroot").setup({
+    workspace_keymaps = { enabled = false },
+  })
+<
+
+Separate from `keys_when_active` in setup opts — that lives in your personal
+Neovim config; `keymaps` in the JSON lives with the project.
+
+Use `keymaps` to bind tasks and stacks to keys without consuming global keymap
+slots. Use |multiroot-project-commands| when you want named Ex commands you can
+tab-complete or call from scripts rather than (or in addition to) key bindings.
+
+------------------------------------------------------------------------------
+4.7 env / envs                                                  *multiroot-env*
 
 `env` is the always-on base map. Applied to |vim.env| on workspace open
 (previous values are snapshotted); restored on close.
@@ -163,36 +267,7 @@ Neovim's own `vim.env` stays on the base. This means two terminals with
 different profiles can run at once.
 
 ------------------------------------------------------------------------------
-4.5 keymaps                                                  *multiroot-keymaps*
-
-List of workspace-scoped keymaps registered on open, removed on close.
-
-  "keymaps": [
-    { "lhs": "<leader>rt", "rhs": "<cmd>Make test<cr>", "desc": "run tests" },
-    { "lhs": "<leader>rd", "rhs": ":lua vim.print('deploy')<cr>", "mode": "n" }
-  ]
-
-Fields:
-
-  lhs   required. Key sequence to bind.
-  rhs   required. Ex command / key sequence. Same syntax as |vim.keymap.set|.
-  mode  optional. String or list of modes. Defaults to "n".
-  desc  optional. Description shown in which-key / |:map|.
-
-These are stored in the shared workspace file, so team members get the same
-project-specific bindings. Because `rhs` can be any Ex command, this has the
-same trust model as |:h exrc|. Disable via: >lua
-
-  require("multiroot").setup({
-    workspace_keymaps = { enabled = false },
-  })
-<
-
-Separate from `keys_when_active` in setup opts — that lives in your personal
-config; this lives in the shared JSON.
-
-------------------------------------------------------------------------------
-4.6 settings.lsp                                       *multiroot-lsp-settings*
+4.8 settings.lsp                                       *multiroot-lsp-settings*
 
 Per-server config patch. Keys are LSP server names; values are merged into
 |vim.lsp.config| for that server. Attached clients are notified via
@@ -272,7 +347,15 @@ Requires Neovim 0.11+.
 :WorkspaceTask [name]     Run a task. Picker if omitted.
 
                                                           *:WorkspaceTaskList*
-:WorkspaceTaskList        List workspace tasks.
+:WorkspaceTaskList        List workspace tasks with their folder and command.
+
+                                                             *:WorkspaceStack*
+:WorkspaceStack [name]    Run a stack (launches all of its tasks in the
+                          configured layout). Picker if omitted.
+
+                                                         *:WorkspaceStackList*
+:WorkspaceStackList       List workspace stacks with their task members and
+                          layout.
 
                                                        *:WorkspaceSaveSession*
 :WorkspaceSaveSession     Force save the current workspace session.
@@ -346,6 +429,7 @@ Example: >lua
   mr.terminal(folder?)         -- terminal in folder (picker if nil)
   mr.terminal_run(name?)       -- launch/focus a named terminal
   mr.task(name?)               -- run a task (picker if nil)
+  mr.stack(name?)              -- run a stack (picker if nil)
   mr.edit()                    -- open the current workspace file
   mr.statusline(opts?)         -- statusline string; opts = { icon, folder, bufnr }
 <
