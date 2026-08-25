@@ -55,31 +55,31 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 
 ```json
 {
-  "name": "acme",
+  "name": "auts",
   "folders": [
-    "~/projects/acme-frontend",
-    "~/projects/acme-backend",
-    "~/projects/acme-shared"
+    "~/projects/auts-frontend",
+    "~/projects/auts-backend",
+    "~/projects/auts-shared"
   ],
   "terminals": [
     {
       "name": "backend-dev",
-      "folder": "acme-backend",
+      "folder": "auts-backend",
       "cmd": "npm run dev",
       "env": "dev",
       "autostart": true
     },
     {
       "name": "backend-prod",
-      "folder": "acme-backend",
+      "folder": "auts-backend",
       "cmd": "npm start",
       "env": "prod"
     },
-    { "name": "shell", "folder": "acme-shared" }
+    { "name": "shell", "folder": "auts-shared" }
   ],
   "tasks": [
-    { "name": "build",       "folder": "acme-backend", "cmd": "make",                "description": "Compile the backend" },
-    { "name": "test",        "folder": "acme-backend", "cmd": "pytest -q",           "description": "Run unit tests" },
+    { "name": "build",       "folder": "auts-backend", "cmd": "make",                "description": "Compile the backend" },
+    { "name": "test",        "folder": "auts-backend", "cmd": "pytest -q",           "description": "Run unit tests" },
     { "name": "deploy-prod", "cmd": "./scripts/deploy.sh", "env": "prod",            "description": "Deploy to production" }
   ],
   "stacks": [
@@ -103,9 +103,9 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     }
   ],
   "commands": [
-    { "name": "AcmeDeploy", "action": "task:deploy-prod", "desc": "Deploy acme to production" },
+    { "name": "AcmeDeploy", "action": "task:deploy-prod", "desc": "Deploy auts to production" },
     { "name": "AcmeDev",    "action": "stack:dev",        "desc": "Start the dev stack" },
-    { "name": "AcmeHello",  "action": "lua:vim.notify('hello from acme!')", "desc": "Say hello" }
+    { "name": "AcmeHello",  "action": "lua:vim.notify('hello from auts!')", "desc": "Say hello" }
   ],
   "keymaps": [
     { "lhs": "<leader>ad", "rhs": ":WorkspaceTask deploy-prod<CR>", "mode": "n", "desc": "Acme: deploy" },
@@ -113,13 +113,13 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
     { "lhs": "<leader>ab", "rhs": ":WorkspaceTask build<CR>",       "mode": "n", "desc": "Acme: build" }
   ],
   "env": {
-    "AWS_PROFILE": "acme-dev",
-    "DATABASE_URL": "postgres://localhost/acme"
+    "AWS_PROFILE": "auts-dev",
+    "DATABASE_URL": "postgres://localhost/auts"
   },
   "envs": {
     "dev": { "API_URL": "http://localhost:3000", "NODE_ENV": "development" },
-    "staging": { "API_URL": "https://staging.acme.com", "NODE_ENV": "staging" },
-    "prod": { "API_URL": "https://api.acme.com", "NODE_ENV": "production" }
+    "staging": { "API_URL": "https://staging.auts.com", "NODE_ENV": "staging" },
+    "prod": { "API_URL": "https://api.auts.com", "NODE_ENV": "production" }
   },
   "settings": {
     "lsp": {
@@ -274,7 +274,7 @@ mr.statusline(opts?)  -- string for lualine/heirline/etc. opts: { icon = true, f
   },
 ```
 
-Returns `" acme:backend"` when a workspace is open (folder segment reflects the current buffer's owning folder), empty string otherwise. Also exposed: `require("multiroot.statusline").name()` and `.folder(bufnr)` for finer control.
+Returns `" auts:backend"` when a workspace is open (folder segment reflects the current buffer's owning folder), empty string otherwise. Also exposed: `require("multiroot.statusline").name()` and `.folder(bufnr)` for finer control.
 
 ### WhichKey group
 
