@@ -77,6 +77,10 @@
             "description": "Shell command to run.",
             "minLength": 1
           },
+          "description": {
+            "type": "string",
+            "description": "Human-readable summary shown in the :WorkspaceTask picker instead of the raw cmd. Also shown by :WorkspaceTaskList."
+          },
           "folder": {
             "type": "string",
             "description": "Folder basename or absolute path. Defaults to the first workspace folder."
@@ -87,12 +91,75 @@
           },
           "position": {
             "type": "string",
+            "description": "Passed to the terminal backend (snacks.terminal).",
             "enum": ["bottom", "top", "left", "right", "float"]
           },
           "interactive": {
             "type": "boolean",
             "description": "Keep the terminal open for input after the command exits (snacks backend only).",
             "default": false
+          }
+        }
+      }
+    },
+    "stacks": {
+      "type": "array",
+      "description": "Named groups of tasks launched together. Choose a layout (tabs, columns, or grid) to arrange the resulting terminals.",
+      "items": {
+        "type": "object",
+        "required": ["name", "tasks"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Stack identifier for :WorkspaceStack.",
+            "minLength": 1
+          },
+          "tasks": {
+            "type": "array",
+            "description": "Ordered list of task names (must exist in the `tasks` array of this file) to launch as part of the stack.",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "layout": {
+            "type": "string",
+            "description": "How to arrange the terminal windows.\n- tabs (default): one tab per task, navigate with gt/gT\n- columns: all tasks side-by-side in a single tab\n- grid: tasks in pairs per tab (two columns per page)",
+            "enum": ["tabs", "columns", "grid"],
+            "default": "tabs"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable summary shown in the :WorkspaceStack picker."
+          }
+        }
+      }
+    },
+    "commands": {
+      "type": "array",
+      "description": "Per-project Ex commands registered on open, deleted on close. Actions can run a task, run a stack, or evaluate Lua. Same trust model as :h exrc.",
+      "items": {
+        "type": "object",
+        "required": ["name", "action"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The Ex command name (e.g. \"AcmeDeploy\"). Must start with an uppercase letter — see :h user-commands.",
+            "pattern": "^[A-Z][A-Za-z0-9]*$",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "description": "What the command does. One of:\n- task:<name>   run a task from this workspace\n- stack:<name>  run a stack from this workspace\n- lua:<code>    evaluate arbitrary Lua",
+            "pattern": "^(task|stack|lua):.+",
+            "minLength": 1
+          },
+          "desc": {
+            "type": "string",
+            "description": "Description shown by :command and which-key."
           }
         }
       }
