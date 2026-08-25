@@ -5,6 +5,8 @@ local M = {}
 
 -- lsp_name -> original vim.lsp.config[name] snapshot (or vim.NIL if not set)
 local snapshots = {}
+-- client_id -> original client.settings snapshot (or vim.NIL if not set)
+local client_snapshots = {}
 
 local function get_overrides()
   if not state.is_active() then
@@ -18,15 +20,21 @@ local function get_overrides()
   return overrides
 end
 
+local function get_clients_by_name(name)
+  return vim.lsp.get_clients and vim.lsp.get_clients({ name = name })
+    or vim.tbl_filter(function(c)
+      return c.name == name
+    end, vim.lsp.get_active_clients())
+end
+
 local function apply_to_clients(name, config_patch)
   if not config_patch.settings then
     return
   end
-  local clients = vim.lsp.get_clients and vim.lsp.get_clients({ name = name })
-    or vim.tbl_filter(function(c)
-      return c.name == name
-    end, vim.lsp.get_active_clients())
-  for _, client in ipairs(clients) do
+  for _, client in ipairs(get_clients_by_name(name)) do
+    if client_snapshots[client.id] == nil then
+      client_snapshots[client.id] = client.settings ~= nil and vim.deepcopy(client.settings) or vim.NIL
+    end
     client.settings = vim.tbl_deep_extend("force", client.settings or {}, config_patch.settings)
     client.notify("workspace/didChangeConfiguration", { settings = client.settings })
   end
@@ -52,20 +60,26 @@ function M.apply()
 end
 
 function M.restore()
-  if vim.lsp.config == nil then
-    snapshots = {}
-    return
-  end
-  for name, snap in pairs(snapshots) do
-    if snap == vim.NIL then
-      pcall(function()
-        vim.lsp.config[name] = nil
-      end)
-    else
-      vim.lsp.config(name, snap)
+  if vim.lsp.config ~= nil then
+    for name, snap in pairs(snapshots) do
+      if snap == vim.NIL then
+        pcall(function()
+          vim.lsp.config[name] = nil
+        end)
+      else
+        vim.lsp.config(name, snap)
+      end
     end
   end
   snapshots = {}
+  for id, snap in pairs(client_snapshots) do
+    local client = vim.lsp.get_client_by_id(id)
+    if client then
+      client.settings = snap == vim.NIL and nil or snap
+      client.notify("workspace/didChangeConfiguration", { settings = client.settings or {} })
+    end
+  end
+  client_snapshots = {}
 end
 
 return M

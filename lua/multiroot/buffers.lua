@@ -1,11 +1,13 @@
 local M = {}
 
+local uv = vim.uv or vim.loop
+
 local function normalize(p)
   if not p or p == "" then
     return nil
   end
-  local abs = vim.fn.fnamemodify(p, ":p")
-  return (abs:gsub("/$", ""))
+  local abs = vim.fn.fnamemodify(p, ":p"):gsub("/$", "")
+  return uv.fs_realpath(abs) or abs
 end
 
 local function under(path, folder)
@@ -53,6 +55,40 @@ function M.wipe_folders(folders)
     end
   end
   return wiped, skipped_modified
+end
+
+--- Subset of `folders` that have no remaining open (listed, file-type) buffers.
+--- Used to avoid detaching LSP workspace folders that are still in use by a
+--- buffer left open (e.g. skipped by wipe_folders due to unsaved changes).
+function M.folders_without_open_buffers(folders)
+  local roots = {}
+  for _, f in ipairs(folders) do
+    local n = normalize(f)
+    if n then
+      roots[n] = true
+    end
+  end
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].buftype == "" then
+      local name = vim.api.nvim_buf_get_name(bufnr)
+      if name and name ~= "" then
+        local path = normalize(name)
+        for root in pairs(roots) do
+          if roots[root] and under(path, root) then
+            roots[root] = false
+          end
+        end
+      end
+    end
+  end
+  local result = {}
+  for _, f in ipairs(folders) do
+    local n = normalize(f)
+    if n and roots[n] then
+      table.insert(result, f)
+    end
+  end
+  return result
 end
 
 return M

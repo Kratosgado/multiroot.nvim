@@ -108,7 +108,7 @@ function M.close(opts)
   end
   if config.lsp.enabled then
     require("multiroot.lsp_settings").restore()
-    lsp.remove_all(folders)
+    lsp.remove_all(require("multiroot.buffers").folders_without_open_buffers(folders))
   end
   require("multiroot.env").restore()
   state.clear()
@@ -242,6 +242,14 @@ function M.task(name)
     require("multiroot.task").run_named(name)
   else
     require("multiroot.task").pick()
+  end
+end
+
+function M.stack(name)
+  if name and name ~= "" then
+    require("multiroot.stack").run_named(name)
+  else
+    require("multiroot.stack").pick()
   end
 end
 

@@ -7,6 +7,13 @@ function M.expand(path)
   return (abs:gsub("/$", ""))
 end
 
+--- Resolve symlinks so paths from different sources (workspace folders vs.
+--- buffer names) can be compared reliably. Falls back to the input when the
+--- path doesn't exist yet.
+function M.realpath(path)
+  return M.uv.fs_realpath(path) or path
+end
+
 function M.read_file(path)
   local fd = M.uv.fs_open(path, "r", 438)
   if not fd then
@@ -54,13 +61,15 @@ function M.folder_for_buffer(bufnr)
   if not name or name == "" then
     return nil
   end
-  local path = M.expand(name)
-  local best
+  local path = M.realpath(M.expand(name))
+  local best, best_len
   for _, f in ipairs(state.folders()) do
-    local prefix = f:sub(-1) == "/" and f or f .. "/"
-    if path == f or path:sub(1, #prefix) == prefix then
-      if not best or #f > #best then
+    local rf = M.realpath(f)
+    local prefix = rf:sub(-1) == "/" and rf or rf .. "/"
+    if path == rf or path:sub(1, #prefix) == prefix then
+      if not best_len or #rf > best_len then
         best = f
+        best_len = #rf
       end
     end
   end

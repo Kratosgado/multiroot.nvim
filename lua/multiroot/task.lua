@@ -78,10 +78,15 @@ function M.pick()
     prompt = "Run task:",
     format_item = function(item)
       local parts = { item.name }
+      if item.description then
+        table.insert(parts, "— " .. item.description)
+      end
       if item.folder then
         table.insert(parts, "[" .. item.folder .. "]")
       end
-      table.insert(parts, "→ " .. (item.cmd or ""))
+      if not item.description then
+        table.insert(parts, "→ " .. (item.cmd or ""))
+      end
       return table.concat(parts, " ")
     end,
   }, function(choice)

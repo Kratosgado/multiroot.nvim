@@ -1,8 +1,41 @@
 local M = {}
 
+-- Tracks per-project command names so we can delete them on workspace close
+local project_commands = {}
+
 local function complete_folders()
   local folders = require("multiroot.state").folders()
   return folders
+end
+
+local function register_project_commands(ws)
+  local mr = require("multiroot")
+  for _, c in ipairs(ws.commands or {}) do
+    local ok = pcall(vim.api.nvim_create_user_command, c.name, function()
+      local action = c.action
+      local kind, target = action:match("^(%w+):(.+)$")
+      if kind == "task" then
+        mr.task(target)
+      elseif kind == "stack" then
+        mr.stack(target)
+      elseif kind == "lua" then
+        local fn, err = load(target)
+        if fn then fn() else vim.notify(err, vim.log.levels.ERROR) end
+      else
+        vim.notify("unknown action: " .. action, vim.log.levels.WARN)
+      end
+    end, { desc = c.desc })
+    if ok then
+      table.insert(project_commands, c.name)
+    end
+  end
+end
+
+local function unregister_project_commands()
+  for _, name in ipairs(project_commands) do
+    pcall(vim.api.nvim_del_user_command, name)
+  end
+  project_commands = {}
 end
 
 function M.setup()
@@ -143,6 +176,42 @@ function M.setup()
     desc = "Run a workspace task (picker if no arg)",
   })
 
+  vim.api.nvim_create_user_command("WorkspaceStack", function(args)
+    mr.stack(args.args)
+  end, {
+    nargs = "?",
+    complete = function()
+      if not state.is_active() then
+        return {}
+      end
+      local names = {}
+      for _, s in ipairs(state.current.stacks or {}) do
+        table.insert(names, s.name)
+      end
+      return names
+    end,
+    desc = "Run a workspace stack (picker if no arg)",
+  })
+
+  vim.api.nvim_create_user_command("WorkspaceStackList", function()
+    if not state.is_active() then
+      util.notify("no workspace open")
+      return
+    end
+    local stacks = state.current.stacks or {}
+    if #stacks == 0 then
+      util.notify("no stacks defined")
+      return
+    end
+    local lines = { "Stacks:" }
+    for _, s in ipairs(stacks) do
+      local desc = s.description and ("  " .. s.description) or ""
+      local tasks_str = table.concat(s.tasks or {}, ", ")
+      table.insert(lines, "  " .. s.name .. desc .. " [" .. tasks_str .. "] (" .. (s.layout or "tabs") .. ")")
+    end
+    vim.api.nvim_echo(vim.tbl_map(function(l) return { l .. "\n" } end, lines), false, {})
+  end, { desc = "List workspace stacks" })
+
   vim.api.nvim_create_user_command("WorkspaceTaskList", function()
     if not state.is_active() then
       util.notify("no workspace open")
@@ -207,6 +276,24 @@ function M.setup()
       util.notify("no session for " .. state.current.name)
     end
   end, { desc = "Restore the current workspace session" })
+
+  -- Register/unregister per-project commands with workspace lifecycle
+  local aug = vim.api.nvim_create_augroup("MultirootProjectCommands", { clear = true })
+  vim.api.nvim_create_autocmd("User", {
+    group = aug,
+    pattern = "MultirootLoaded",
+    callback = function(ev)
+      unregister_project_commands()
+      register_project_commands(ev.data or state.current)
+    end,
+  })
+  vim.api.nvim_create_autocmd("User", {
+    group = aug,
+    pattern = "MultirootClosed",
+    callback = function()
+      unregister_project_commands()
+    end,
+  })
 end
 
 return M
