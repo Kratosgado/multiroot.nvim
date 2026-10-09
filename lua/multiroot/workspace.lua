@@ -105,6 +105,31 @@ function M.read(path)
       end
     end
   end
+  -- Each hook is a bare command string or { cmd, name?, folder?, env? }.
+  local function coerce_hook_list(list)
+    local out = {}
+    if type(list) ~= "table" then
+      return out
+    end
+    for _, h in ipairs(list) do
+      if type(h) == "string" and h ~= "" then
+        table.insert(out, { cmd = h })
+      elseif type(h) == "table" and type(h.cmd) == "string" and h.cmd ~= "" then
+        table.insert(out, {
+          cmd = h.cmd,
+          name = type(h.name) == "string" and h.name or nil,
+          folder = type(h.folder) == "string" and h.folder or nil,
+          env = type(h.env) == "string" and h.env or nil,
+        })
+      end
+    end
+    return out
+  end
+  local raw_hooks = type(decoded.hooks) == "table" and decoded.hooks or {}
+  local hooks = {
+    on_open = coerce_hook_list(raw_hooks.on_open),
+    on_close = coerce_hook_list(raw_hooks.on_close),
+  }
   local keymaps = {}
   for _, k in ipairs(decoded.keymaps or {}) do
     if type(k) == "table" and type(k.lhs) == "string" and type(k.rhs) == "string" then
@@ -127,8 +152,23 @@ function M.read(path)
     commands = commands,
     env = env,
     envs = envs,
+    hooks = hooks,
     keymaps = keymaps,
   }
+end
+
+-- Collapse hooks that only carry a cmd back to bare strings so rewriting the
+-- file (add/remove folder) doesn't bloat what the user wrote by hand.
+local function hook_payload(list)
+  local out = {}
+  for _, h in ipairs(list or {}) do
+    if h.name or h.folder or h.env then
+      table.insert(out, h)
+    else
+      table.insert(out, h.cmd)
+    end
+  end
+  return out
 end
 
 function M.write(path, ws)
@@ -157,6 +197,15 @@ function M.write(path, ws)
   end
   if ws.commands and #ws.commands > 0 then
     payload.commands = ws.commands
+  end
+  if ws.hooks then
+    local on_open, on_close = hook_payload(ws.hooks.on_open), hook_payload(ws.hooks.on_close)
+    if #on_open > 0 or #on_close > 0 then
+      payload.hooks = {
+        on_open = #on_open > 0 and on_open or nil,
+        on_close = #on_close > 0 and on_close or nil,
+      }
+    end
   end
   if ws.keymaps and #ws.keymaps > 0 then
     payload.keymaps = ws.keymaps

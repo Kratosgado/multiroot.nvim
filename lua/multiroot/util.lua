@@ -76,6 +76,25 @@ function M.folder_for_buffer(bufnr)
   return best
 end
 
+--- Resolve a folder spec (absolute path, `~` path, or workspace folder
+--- basename) to an absolute path. Defaults to the first workspace folder.
+function M.resolve_folder(folder)
+  local folders = require("multiroot.state").folders()
+  if not folder or folder == "" then
+    return folders[1] or vim.fn.getcwd()
+  end
+  local expanded = M.expand(folder)
+  if vim.fn.isdirectory(expanded) == 1 then
+    return expanded
+  end
+  for _, f in ipairs(folders) do
+    if vim.fn.fnamemodify(f, ":t") == folder then
+      return f
+    end
+  end
+  return expanded
+end
+
 function M.encode_pretty(tbl)
   local ok, encoded = pcall(vim.json.encode, tbl)
   if not ok then

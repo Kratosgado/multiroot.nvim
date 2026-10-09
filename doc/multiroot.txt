@@ -18,6 +18,7 @@ CONTENTS                                                    *multiroot-contents*
      4.6 keymaps .......................... |multiroot-keymaps|
      4.7 env / envs ....................... |multiroot-env|
      4.8 settings.lsp ..................... |multiroot-lsp-settings|
+     4.9 hooks ............................ |multiroot-hooks|
   5. Commands ............................. |multiroot-commands|
   6. Configuration ........................ |multiroot-configuration|
   7. Lua API .............................. |multiroot-api|
@@ -43,6 +44,7 @@ a JSON file. Once a workspace is loaded:
   - per-project Ex commands and keymaps declared in the workspace file,
     registered on open and removed on close
   - env vars are set on open, restored on close
+  - shell hooks run when the workspace opens and when it closes or Neovim exits
   - named env profiles can be layered onto individual terminals/tasks
   - sessions save/restore per workspace
   - closing or switching wipes the workspace's buffers and terminals
@@ -275,6 +277,49 @@ Per-server config patch. Keys are LSP server names; values are merged into
 
 Requires Neovim 0.11+.
 
+------------------------------------------------------------------------------
+4.9 hooks                                                      *multiroot-hooks*
+
+Shell commands run around the workspace lifecycle: >
+
+  "hooks": {
+    "on_open": [
+      "docker compose up -d",
+      { "name": "migrate", "folder": "acme-backend",
+        "cmd": "npm run migrate", "env": "dev" }
+    ],
+    "on_close": ["docker compose down"]
+  }
+<
+Each entry is a command string or an object:
+
+  cmd     required. Run via 'shell' -c.
+  name    optional. Label used in notifications instead of the raw cmd.
+  folder  optional. Folder basename or absolute path. Defaults to the first
+          workspace folder.
+  env     optional. Env profile from `envs` layered onto the command.
+
+on_open   Runs in the background when the workspace opens, including at
+          startup with `auto_load`. Not awaited: `autostart` terminals start
+          alongside the hooks.
+on_close  Runs to completion (blocking) when the workspace is closed, when
+          switching to another workspace, and when Neovim exits with a
+          workspace open.
+
+Entries run in order. A failing entry is reported and the rest still run; use
+`&&` inside a single `cmd` when steps depend on each other. Each command is
+killed after `hooks.timeout` ms (default 30000). |:WorkspaceReload| does not
+re-run hooks, so services they manage are left alone.
+
+Hooks run arbitrary shell commands, so this has the same trust model as
+|:h exrc|. Disable via: >lua
+
+  require("multiroot").setup({
+    hooks = { enabled = false },
+  })
+<
+Requires Neovim 0.10+ (`vim.system`).
+
 ==============================================================================
 5. COMMANDS                                                 *multiroot-commands*
 
@@ -390,6 +435,10 @@ Requires Neovim 0.11+.
       wipe_buffers = true,      -- delete file buffers under ws folders
       close_terminals = true,   -- kill named terminals for the workspace
     },
+    hooks = {
+      enabled = true,           -- run the workspace file's `hooks` (|multiroot-hooks|)
+      timeout = 30000,          -- ms before one hook command is killed
+    },
   })
 <
 
@@ -496,12 +545,14 @@ following, in order:
 
   1. Save the workspace session (if `session.autosave` is enabled)
   2. Kill named terminals for the workspace (`on_close.close_terminals`)
-  3. Wipe file buffers whose path is under any workspace folder
+  3. Run `hooks.on_close` and wait for them (|multiroot-hooks|). Also run
+     when Neovim exits with a workspace open.
+  4. Wipe file buffers whose path is under any workspace folder
      (`on_close.wipe_buffers`) — modified buffers are kept and counted
-  4. Revert `settings.lsp` overrides
-  5. Remove each folder from every attached LSP client
-  6. Restore env vars
-  7. Fire |MultirootClosed|
+  5. Revert `settings.lsp` overrides
+  6. Remove each folder from every attached LSP client
+  7. Restore env vars
+  8. Fire |MultirootClosed|
 
 Buffers outside the workspace (help, scratch, unrelated files) are untouched.
 

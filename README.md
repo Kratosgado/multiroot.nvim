@@ -12,6 +12,7 @@ VSCode-style multi-root workspaces for Neovim. Group N folders under one workspa
 - Task stacks — run a named group of tasks in one shot, arranged as tabs, columns, or a grid
 - Per-project Vim commands declared in the workspace file, registered on open and removed on close
 - Per-workspace env vars (auto-applied, auto-restored on close)
+- Lifecycle hooks: shell commands that run when the workspace opens and when it closes or Neovim exits
 - Per-workspace LSP settings overrides
 - Statusline component
 - Clean handoff on close/switch: wipes workspace file buffers and terminals, keeps unrelated buffers
@@ -147,6 +148,7 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
   - `"stack:<name>"` — runs a stack from this workspace
   - `"lua:<code>"` — evaluates arbitrary Lua
 - **keymaps** — per-project key mappings applied on open, removed on close. `[{lhs, rhs, mode?, desc?}]`. `rhs` can be any Ex command or `<Plug>` mapping — use this to bind tasks and stacks to keys without consuming global keymap slots. Same trust model as `:h exrc` — disable via `opts.workspace_keymaps.enabled = false`.
+- **hooks** — shell commands run around the workspace lifecycle. `on_open` runs in the background when the workspace opens (so it also fires at startup with `auto_load`); `on_close` runs to completion when the workspace is closed, switched away from, or Neovim exits. Each entry is a command string or `{ cmd, name?, folder?, env? }` (`folder` defaults to the first workspace folder). Entries run in order; a failing one is reported and the rest still run, so use `&&` inside one `cmd` when steps depend on each other. Commands run via `'shell' -c`, are killed after `hooks.timeout` (30s), and are skipped by `:WorkspaceReload`. `on_open` hooks are not awaited: `autostart` terminals start alongside them. Disable with `opts.hooks.enabled = false` (same trust model as `:h exrc`). Requires Neovim 0.10+.
 - **env** — always-on base env for the workspace. Set on open (previous values snapshotted), restored on close. Inherited by all terminals/tasks automatically.
 - **envs** — named profiles. Referenced per-terminal / per-task via `"env": "<name>"`. Vars flow only into that child process — Neovim's own `vim.env` stays on the base. This means you can run `backend-dev` and `backend-prod` terminals side by side in different profiles.
 - **settings.lsp** — per-server config patch merged into `vim.lsp.config`; attached clients are notified via `workspace/didChangeConfiguration`. Reverted on close. Requires Neovim 0.11+.
@@ -212,6 +214,11 @@ require("multiroot").setup({
     -- called by :WorkspaceGit with the buffer's owning workspace folder.
     -- Default: opens Neogit if installed. Override for lazygit / fugitive / etc.
     open = nil,
+  },
+  hooks = {
+    enabled = true,           -- run the 'hooks' field in the workspace JSON
+                              -- (shell commands; same trust model as :h exrc)
+    timeout = 30000,          -- ms before a single hook command is killed
   },
   workspace_keymaps = {
     enabled = true,           -- respect the 'keymaps' field in workspace JSON
@@ -312,9 +319,10 @@ vim.api.nvim_create_autocmd("User", {
 
 1. Saves the workspace session (if `session.autosave` is enabled)
 2. Kills the workspace's named terminals (`on_close.close_terminals`)
-3. Wipes file buffers whose path is under any of the workspace folders (`on_close.wipe_buffers`) — modified buffers are kept, and the count is included in the notification
-4. Removes each folder from every attached LSP client
-5. Fires `User MultirootClosed`
+3. Runs the workspace's `hooks.on_close` commands and waits for them (also run when Neovim exits with a workspace open)
+4. Wipes file buffers whose path is under any of the workspace folders (`on_close.wipe_buffers`) — modified buffers are kept, and the count is included in the notification
+5. Removes each folder from every attached LSP client
+6. Fires `User MultirootClosed`
 
 Buffers outside the workspace folders (help pages, scratch buffers, unrelated files) are untouched. Set either `on_close.wipe_buffers = false` or `on_close.close_terminals = false` to opt out.
 

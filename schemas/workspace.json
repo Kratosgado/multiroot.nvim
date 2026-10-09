@@ -6,6 +6,27 @@
   "type": "object",
   "required": ["folders"],
   "additionalProperties": false,
+  "definitions": {
+    "hookList": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string", "minLength": 1, "description": "Shell command, run in the first workspace folder." },
+          {
+            "type": "object",
+            "required": ["cmd"],
+            "additionalProperties": false,
+            "properties": {
+              "cmd": { "type": "string", "description": "Shell command to run.", "minLength": 1 },
+              "name": { "type": "string", "description": "Label used in notifications instead of the raw cmd." },
+              "folder": { "type": "string", "description": "Folder basename or absolute path to run in. Defaults to the first workspace folder." },
+              "env": { "type": "string", "description": "Name of an env profile from `envs` to layer onto the command." }
+            }
+          }
+        ]
+      }
+    }
+  },
   "properties": {
     "name": {
       "type": "string",
@@ -179,6 +200,21 @@
         "description": "One env profile.",
         "additionalProperties": {
           "type": ["string", "number", "boolean"]
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Shell commands run automatically around the workspace lifecycle. Each list runs in order; a failing command is reported and the rest still run. Executes arbitrary shell commands, same trust model as :h exrc. Disable via opts.hooks.enabled = false.",
+      "additionalProperties": false,
+      "properties": {
+        "on_open": {
+          "description": "Run in the background when the workspace opens (including at startup with auto_load). Not re-run by :WorkspaceReload.",
+          "$ref": "#/definitions/hookList"
+        },
+        "on_close": {
+          "description": "Run to completion when the workspace closes, is switched away from, or Neovim exits. Not re-run by :WorkspaceReload. Each command is killed after opts.hooks.timeout (default 30s).",
+          "$ref": "#/definitions/hookList"
         }
       }
     },

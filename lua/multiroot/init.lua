@@ -10,6 +10,7 @@ function M.setup(opts)
 
   require("multiroot.lsp").setup()
   require("multiroot.session").setup()
+  require("multiroot.hooks").setup()
   require("multiroot.commands").setup()
   require("multiroot.keymap").setup()
   require("multiroot.auto_lcd").setup()
@@ -39,7 +40,9 @@ function M.setup(opts)
   end
 end
 
-function M.open(path)
+--- opts.skip_hooks: don't run the workspace's on_open hooks (used by reload).
+function M.open(path, opts)
+  opts = opts or {}
   local config = require("multiroot.config").get()
   local workspace = require("multiroot.workspace")
   local state = require("multiroot.state")
@@ -77,6 +80,9 @@ function M.open(path)
   if config.session.autoload then
     session.load(ws.name)
   end
+  if not opts.skip_hooks then
+    require("multiroot.hooks").run_open(ws)
+  end
   if config.terminal and config.terminal.autostart then
     require("multiroot.terminal").autostart()
   end
@@ -101,6 +107,9 @@ function M.close(opts)
   local folders = state.folders()
   if config.on_close and config.on_close.close_terminals then
     require("multiroot.terminal").close_all_for_current()
+  end
+  if not opts.skip_hooks then
+    require("multiroot.hooks").run_close(ws)
   end
   local wiped, skipped = 0, 0
   if config.on_close and config.on_close.wipe_buffers then
@@ -296,8 +305,9 @@ function M.reload()
     return false
   end
   local path = state.current.file
-  M.close({ silent = true })
-  return M.open(path)
+  -- a reload is not a stop/start, so leave services the hooks manage alone
+  M.close({ silent = true, skip_hooks = true })
+  return M.open(path, { skip_hooks = true })
 end
 
 return M
