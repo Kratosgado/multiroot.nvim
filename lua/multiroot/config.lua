@@ -35,6 +35,12 @@ M.defaults = {
 		-- workspace folder on BufEnter (helps cwd-based tools
 		-- like Neogit / lazygit)
 	},
+	hooks = {
+		enabled = true, -- run the 'hooks' field in the workspace JSON (shell
+		-- commands on open/close; same trust model as
+		-- :h exrc, disable if you open untrusted files)
+		timeout = 30000, -- ms before a single hook command is killed
+	},
 	workspace_keymaps = {
 		enabled = true, -- honor the 'keymaps' field in the workspace JSON
 		-- (executes arbitrary Ex commands; same trust model

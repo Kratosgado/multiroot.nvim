@@ -24,6 +24,11 @@ local function add_folders_to_client(client, folders)
   if not client or not client.workspace_folders then
     return
   end
+  -- rust-analyzer does a full workspace reload (cargo metadata, build scripts,
+  -- proc-macros) on every didChangeWorkspaceFolders; it finds its own root anyway.
+  if client.name == "rust-analyzer" then
+    return
+  end
   local existing = existing_folders(client)
   local to_add = {}
   for _, folder in ipairs(folders) do
