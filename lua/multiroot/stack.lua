@@ -29,7 +29,7 @@ local function open_in_win(spec, ws_folders)
   if env then
     job_opts.env = env
   end
-  vim.fn.termopen({ vim.o.shell, "-c", spec.cmd }, job_opts)
+  vim.fn.termopen(util.shell_cmd(spec.cmd), job_opts)
   local bufnr = vim.api.nvim_get_current_buf()
   vim.b[bufnr].multiroot_task = spec.name
   -- Rename buffer; ignore if name is already taken

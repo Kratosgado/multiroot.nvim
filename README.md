@@ -136,7 +136,7 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 
 `folder` may be the folder's basename (matched against the workspace `folders` list) or an absolute path. Paths can be absolute or use `~`. When a workspace is opened, Neovim `cd`s into the first folder.
 
-- **terminals** — long-running processes; reopening a named terminal focuses the existing buffer. `autostart: true` launches on open. Omit `cmd` for a plain shell. `env: "profile"` layers a named profile onto the spawned process.
+- **terminals** — long-running processes; reopening a named terminal focuses the existing buffer. `autostart: true` launches on open. Omit `cmd` for a plain shell. `env: "profile"` layers a named profile onto the spawned process. Commands are executed by an interactive shell (`$SHELL -ic`), so `PATH` entries and aliases from your `.bashrc`/`.zshrc` (Android SDK, mise, ...) are available; tasks and stacks use the same shell.
 - **tasks** — one-shot commands run in a fresh terminal split each time. No autostart; no reuse. Optional `description` is shown in the picker instead of the raw `cmd`. Also supports `env: "profile"`.
 - **stacks** — named groups of tasks launched together. `tasks` is an ordered list of task names defined in the same file. `layout` controls how the terminals are arranged:
   - `"tabs"` (default) — one tab per task, navigate with `gt` / `gT`

@@ -164,7 +164,10 @@ Long-running processes. Each entry:
             workspace — re-running focuses the existing buffer.
   folder    basename (matched against `folders`) or absolute path. Defaults
             to the first workspace folder.
-  cmd       shell command. Omit for a plain shell.
+  cmd       shell command. Omit for a plain shell. Commands run through an
+            interactive shell ($SHELL -ic), so PATH/aliases exported from
+            your rc file are available — same environment as a terminal you
+            open by hand.
   env       optional profile name from `envs`; those vars are added to the
             spawned process.
   position  passed to the terminal backend ("bottom", "float", etc.).

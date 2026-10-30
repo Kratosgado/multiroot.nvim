@@ -28,6 +28,7 @@ local function run(spec)
   local cwd = resolve_folder(spec.folder)
   local title = "task: " .. spec.name
   local env = require("multiroot.env").resolve(spec.env)
+  local cmd = util.shell_cmd(spec.cmd)
   if has_snacks_term() then
     local sopts = {
       cwd = cwd,
@@ -37,13 +38,13 @@ local function run(spec)
     if env then
       sopts.env = env
     end
-    return _G.Snacks.terminal.open(spec.cmd, sopts)
+    return _G.Snacks.terminal.open(cmd, sopts)
   end
   vim.cmd("botright split")
   local prev = vim.fn.getcwd()
   pcall(vim.cmd, "lcd " .. vim.fn.fnameescape(cwd))
-  local job_opts = env and { env = env } or {}
-  vim.fn.termopen({ vim.o.shell, "-c", spec.cmd }, job_opts)
+  local job_opts = env and { env = env } or vim.empty_dict()
+  vim.fn.termopen(cmd, job_opts)
   local bufnr = vim.api.nvim_get_current_buf()
   vim.b[bufnr].multiroot_task = spec.name
   pcall(vim.cmd, "lcd " .. vim.fn.fnameescape(prev))

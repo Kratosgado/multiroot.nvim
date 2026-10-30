@@ -65,7 +65,7 @@ local function open_snacks(opts)
   end
   local cmd = opts.cmd
   if cmd and cmd ~= "" then
-    return _G.Snacks.terminal.open(cmd, sopts)
+    return _G.Snacks.terminal.open(util.shell_cmd(cmd), sopts)
   end
   return _G.Snacks.terminal.open(nil, sopts)
 end
@@ -75,13 +75,13 @@ local function open_builtin(opts)
   local prev = vim.fn.getcwd()
   local ok_cd = pcall(vim.cmd, "lcd " .. vim.fn.fnameescape(opts.cwd))
   local shell = vim.o.shell
-  local job_opts = {}
+  local job_opts = vim.empty_dict()
   if opts.env then
     job_opts.env = opts.env
   end
   local cmd = opts.cmd
   if cmd and cmd ~= "" then
-    vim.fn.termopen({ shell, "-c", cmd }, job_opts)
+    vim.fn.termopen(util.shell_cmd(cmd), job_opts)
   else
     vim.fn.termopen(shell, job_opts)
   end

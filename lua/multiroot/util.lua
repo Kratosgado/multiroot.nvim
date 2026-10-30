@@ -41,6 +41,20 @@ function M.exists(path)
   return M.uv.fs_stat(path) ~= nil
 end
 
+--- Wrap a command line so it runs through the user's interactive shell.
+--- `jobstart()`/`termopen()` with a plain string use a *non-interactive*
+--- shell, which never sources rc files. Anything exported from
+--- ~/.bashrc / ~/.zshrc (Android SDK, mise shims, custom PATH entries, ...)
+--- is therefore missing from tasks/terminals. `-i` makes the shell read its
+--- rc file first, so the command sees the same environment as a terminal
+--- opened by hand.
+function M.shell_cmd(cmd)
+  if type(cmd) ~= "string" or cmd == "" then
+    return cmd
+  end
+  return { vim.o.shell, "-ic", cmd }
+end
+
 function M.notify(msg, level)
   local config = require("multiroot.config").get()
   if not config.notify then
