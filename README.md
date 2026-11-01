@@ -178,6 +178,8 @@ A workspace is a JSON file. Place it anywhere; conventionally named `.nvim-works
 | `:WorkspaceStackList`           | List workspace stacks                                         |
 | `:WorkspaceSaveSession`         | Force save the current session                                |
 | `:WorkspaceLoadSession`         | Restore the active workspace's session                        |
+| `:WorkspacePruneRecent`         | Remove stale workspace entries from recent list               |
+| `:WorkspaceDetect`              | Detect and open workspace file if present in cwd              |
 
 ## Configuration
 
@@ -240,6 +242,8 @@ mr.open(path)         -- open a workspace file
 mr.close()            -- close current workspace
 mr.create(folders?, name?)   -- always writes cwd/<workspace_file>
 mr.reload()                  -- re-read the current workspace file
+mr.detect_workspace()        -- check if workspace file exists in cwd (returns path or nil)
+mr.prune_recent()            -- remove stale entries from recent list (returns count removed)
 mr.folder_for_buffer(bufnr?) -- absolute path of the buffer's owning folder
 mr.git(bufnr?)               -- open the configured git tool at that folder
 mr.add_folder(path)

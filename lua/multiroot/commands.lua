@@ -277,6 +277,24 @@ function M.setup()
     end
   end, { desc = "Restore the current workspace session" })
 
+  vim.api.nvim_create_user_command("WorkspacePruneRecent", function()
+    local count = mr.prune_recent()
+    if count == 0 then
+      util.notify("no stale entries to prune")
+    else
+      util.notify("pruned " .. count .. " stale workspace entr" .. (count == 1 and "y" or "ies"))
+    end
+  end, { desc = "Remove stale workspaces from recent list" })
+
+  vim.api.nvim_create_user_command("WorkspaceDetect", function(args)
+    local ws_file = mr.detect_workspace()
+    if ws_file then
+      mr.open(ws_file)
+    else
+      util.notify("no workspace file found in " .. vim.fn.getcwd(), vim.log.levels.WARN)
+    end
+  end, { desc = "Detect and open workspace file if present in cwd" })
+
   -- Register/unregister per-project commands with workspace lifecycle
   local aug = vim.api.nvim_create_augroup("MultirootProjectCommands", { clear = true })
   vim.api.nvim_create_autocmd("User", {

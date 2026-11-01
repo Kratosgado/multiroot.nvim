@@ -310,4 +310,33 @@ function M.reload()
   return M.open(path, { skip_hooks = true })
 end
 
+--- Detect if there's a workspace file in the current working directory.
+--- Returns the workspace file path if found, nil otherwise.
+function M.detect_workspace()
+  local config = require("multiroot.config").get()
+  local workspace = require("multiroot.workspace")
+  return workspace.find_in_cwd(config.workspace_file)
+end
+
+--- Prune stale entries from the recent workspaces list.
+--- Removes entries whose workspace files no longer exist.
+--- Returns the number of entries removed.
+function M.prune_recent()
+  local recent = require("multiroot.recent")
+  local list = recent.read()
+  local count = 0
+  local pruned = {}
+  for _, entry in ipairs(list) do
+    if vim.fn.filereadable(entry.file) == 1 then
+      table.insert(pruned, entry)
+    else
+      count = count + 1
+    end
+  end
+  if count > 0 then
+    recent.write(pruned)
+  end
+  return count
+end
+
 return M
